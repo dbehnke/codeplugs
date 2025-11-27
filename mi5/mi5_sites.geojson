@@ -132,6 +132,22 @@
         {
             "type": "Feature",
             "properties": {
+                "name": "Flint",
+                "zone": "Flint Area",
+                "marker-color": "#ff0000",
+                "marker-symbol": "circle"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -83.68750,
+                    43.01250
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
                 "name": "Frankenmuth",
                 "zone": "Flint Area",
                 "marker-color": "#ff0000",
@@ -142,6 +158,22 @@
                 "coordinates": [
                     -83.73802,
                     43.33169
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Grand Haven",
+                "zone": "Lakeshore",
+                "marker-color": "#008080",
+                "marker-symbol": "circle"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -86.2284,
+                    43.0631
                 ]
             }
         },
@@ -174,6 +206,22 @@
                 "coordinates": [
                     -84.21301,
                     42.25087
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Greenville",
+                "zone": "Grand Rapids Area",
+                "marker-color": "#ffff00",
+                "marker-symbol": "circle"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -85.2528,
+                    43.1775
                 ]
             }
         },
@@ -276,6 +324,22 @@
         {
             "type": "Feature",
             "properties": {
+                "name": "Mackinaw/Levering",
+                "zone": "Northern Michigan",
+                "marker-color": "#800080",
+                "marker-symbol": "circle"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -84.7870,
+                    45.6358
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
                 "name": "Mayville",
                 "zone": "Thumb Area",
                 "marker-color": "#0000ff",
@@ -302,6 +366,22 @@
                 "coordinates": [
                     -84.234238,
                     43.618183
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Milan",
+                "zone": "Ann Arbor Area",
+                "marker-color": "#ffa500",
+                "marker-symbol": "circle"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -83.6824,
+                    42.0853
                 ]
             }
         },
@@ -388,6 +468,22 @@
         {
             "type": "Feature",
             "properties": {
+                "name": "Petoskey",
+                "zone": "Northern Michigan",
+                "marker-color": "#800080",
+                "marker-symbol": "circle"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -84.9553,
+                    45.3733
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
                 "name": "Pinconning",
                 "zone": "Saginaw/Mid-Michigan",
                 "marker-color": "#00ff00",
@@ -398,6 +494,22 @@
                 "coordinates": [
                     -83.964989,
                     43.853634
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Sault Ste. Marie",
+                "zone": "Northern Michigan",
+                "marker-color": "#800080",
+                "marker-symbol": "circle"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -84.3453,
+                    46.4953
                 ]
             }
         },
