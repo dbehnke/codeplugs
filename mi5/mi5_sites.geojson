@@ -5,6 +5,10 @@
             "type": "Feature",
             "properties": {
                 "name": "Bancroft",
+                "site_id": "BAN",
+                "frequency": "443.31250",
+                "offset": "+5",
+                "color_code": "1",
                 "zone": "Flint/Saginaw",
                 "marker-color": "#ff0000",
                 "marker-symbol": "circle"
@@ -21,6 +25,10 @@
             "type": "Feature",
             "properties": {
                 "name": "Bay City",
+                "site_id": "BAY",
+                "frequency": "443.81250",
+                "offset": "+5",
+                "color_code": "1",
                 "zone": "Flint/Saginaw",
                 "marker-color": "#ff0000",
                 "marker-symbol": "circle"
@@ -37,6 +45,10 @@
             "type": "Feature",
             "properties": {
                 "name": "Burnside",
+                "site_id": "BRN",
+                "frequency": "443.11250",
+                "offset": "+5",
+                "color_code": "1",
                 "zone": "Thumb Area",
                 "marker-color": "#0000ff",
                 "marker-symbol": "circle"
@@ -53,6 +65,10 @@
             "type": "Feature",
             "properties": {
                 "name": "Byron Center",
+                "site_id": "BYN",
+                "frequency": "444.62500",
+                "offset": "+5",
+                "color_code": "1",
                 "zone": "Grand Rapids Area",
                 "marker-color": "#ffff00",
                 "marker-symbol": "circle"
@@ -69,6 +85,10 @@
             "type": "Feature",
             "properties": {
                 "name": "Cass City",
+                "site_id": "CAS",
+                "frequency": "442.08750",
+                "offset": "+5",
+                "color_code": "1",
                 "zone": "Thumb Area",
                 "marker-color": "#0000ff",
                 "marker-symbol": "circle"
@@ -85,6 +105,10 @@
             "type": "Feature",
             "properties": {
                 "name": "Dansville",
+                "site_id": "DAN",
+                "frequency": "444.70000",
+                "offset": "+5",
+                "color_code": "1",
                 "zone": "Lansing Area",
                 "marker-color": "#ff00ff",
                 "marker-symbol": "circle"
@@ -101,6 +125,10 @@
             "type": "Feature",
             "properties": {
                 "name": "Detroit",
+                "site_id": "DET",
+                "frequency": "444.00000",
+                "offset": "+5",
+                "color_code": "1",
                 "zone": "Detroit Area",
                 "marker-color": "#00ffff",
                 "marker-symbol": "circle"
@@ -117,6 +145,10 @@
             "type": "Feature",
             "properties": {
                 "name": "Fenton",
+                "site_id": "FEN",
+                "frequency": "443.92500",
+                "offset": "+5",
+                "color_code": "1",
                 "zone": "Flint/Saginaw",
                 "marker-color": "#ff0000",
                 "marker-symbol": "circle"
@@ -133,6 +165,10 @@
             "type": "Feature",
             "properties": {
                 "name": "Flint",
+                "site_id": "FNT",
+                "frequency": "443.38750",
+                "offset": "+5",
+                "color_code": "1",
                 "zone": "Flint/Saginaw",
                 "marker-color": "#ff0000",
                 "marker-symbol": "circle"
@@ -149,6 +185,10 @@
             "type": "Feature",
             "properties": {
                 "name": "Frankenmuth",
+                "site_id": "FRA",
+                "frequency": "444.25000",
+                "offset": "+5",
+                "color_code": "1",
                 "zone": "Flint/Saginaw",
                 "marker-color": "#ff0000",
                 "marker-symbol": "circle"
@@ -165,6 +205,10 @@
             "type": "Feature",
             "properties": {
                 "name": "Grand Haven",
+                "site_id": "GHN",
+                "frequency": "443.60000",
+                "offset": "+5",
+                "color_code": "1",
                 "zone": "Lakeshore",
                 "marker-color": "#008080",
                 "marker-symbol": "circle"
@@ -181,6 +225,10 @@
             "type": "Feature",
             "properties": {
                 "name": "Grand Rapids",
+                "site_id": "GRD",
+                "frequency": "444.25000",
+                "offset": "+5",
+                "color_code": "1",
                 "zone": "Grand Rapids Area",
                 "marker-color": "#ffff00",
                 "marker-symbol": "circle"
@@ -197,6 +245,10 @@
             "type": "Feature",
             "properties": {
                 "name": "Grass Lake",
+                "site_id": "GLK",
+                "frequency": "443.81250",
+                "offset": "+5",
+                "color_code": "1",
                 "zone": "Ann Arbor Area",
                 "marker-color": "#ffa500",
                 "marker-symbol": "circle"
@@ -213,6 +265,10 @@
             "type": "Feature",
             "properties": {
                 "name": "Greenville",
+                "site_id": "GRN",
+                "frequency": "443.38750",
+                "offset": "+5",
+                "color_code": "1",
                 "zone": "Grand Rapids Area",
                 "marker-color": "#ffff00",
                 "marker-symbol": "circle"
@@ -229,6 +285,10 @@
             "type": "Feature",
             "properties": {
                 "name": "Hackleburg",
+                "site_id": "HAK",
+                "frequency": "442.08750",
+                "offset": "+5",
+                "color_code": "1",
                 "zone": "Northern Michigan",
                 "marker-color": "#800080",
                 "marker-symbol": "circle"
@@ -245,6 +305,10 @@
             "type": "Feature",
             "properties": {
                 "name": "Hamilton",
+                "site_id": "HAM",
+                "frequency": "443.92500",
+                "offset": "+5",
+                "color_code": "1",
                 "zone": "Lakeshore",
                 "marker-color": "#008080",
                 "marker-symbol": "circle"
@@ -261,6 +325,10 @@
             "type": "Feature",
             "properties": {
                 "name": "James TWP",
+                "site_id": "JAM",
+                "frequency": "443.60000",
+                "offset": "+5",
+                "color_code": "1",
                 "zone": "Flint/Saginaw",
                 "marker-color": "#ff0000",
                 "marker-symbol": "circle"
@@ -277,6 +345,10 @@
             "type": "Feature",
             "properties": {
                 "name": "Lansing",
+                "site_id": "LAN",
+                "frequency": "442.08750",
+                "offset": "+5",
+                "color_code": "1",
                 "zone": "Lansing Area",
                 "marker-color": "#ff00ff",
                 "marker-symbol": "circle"
@@ -293,6 +365,10 @@
             "type": "Feature",
             "properties": {
                 "name": "Lincoln",
+                "site_id": "LIN",
+                "frequency": "442.01250",
+                "offset": "+5",
+                "color_code": "1",
                 "zone": "Northern Michigan",
                 "marker-color": "#800080",
                 "marker-symbol": "circle"
@@ -309,6 +385,10 @@
             "type": "Feature",
             "properties": {
                 "name": "Lowell",
+                "site_id": "LOW",
+                "frequency": "443.11250",
+                "offset": "+5",
+                "color_code": "1",
                 "zone": "Grand Rapids Area",
                 "marker-color": "#ffff00",
                 "marker-symbol": "circle"
@@ -325,6 +405,10 @@
             "type": "Feature",
             "properties": {
                 "name": "Mackinaw/Levering",
+                "site_id": "MAC",
+                "frequency": "444.62500",
+                "offset": "+5",
+                "color_code": "1",
                 "zone": "Northern Michigan",
                 "marker-color": "#800080",
                 "marker-symbol": "circle"
@@ -341,6 +425,10 @@
             "type": "Feature",
             "properties": {
                 "name": "Mayville",
+                "site_id": "MAY",
+                "frequency": "443.85000",
+                "offset": "+5",
+                "color_code": "1",
                 "zone": "Thumb Area",
                 "marker-color": "#0000ff",
                 "marker-symbol": "circle"
@@ -357,6 +445,10 @@
             "type": "Feature",
             "properties": {
                 "name": "Midland",
+                "site_id": "MID",
+                "frequency": "443.95000",
+                "offset": "+5",
+                "color_code": "1",
                 "zone": "Flint/Saginaw",
                 "marker-color": "#ff0000",
                 "marker-symbol": "circle"
@@ -373,6 +465,10 @@
             "type": "Feature",
             "properties": {
                 "name": "Milan",
+                "site_id": "MIL",
+                "frequency": "443.11250",
+                "offset": "+5",
+                "color_code": "1",
                 "zone": "Ann Arbor Area",
                 "marker-color": "#ffa500",
                 "marker-symbol": "circle"
@@ -389,6 +485,10 @@
             "type": "Feature",
             "properties": {
                 "name": "Mio",
+                "site_id": "MIO",
+                "frequency": "444.70000",
+                "offset": "+5",
+                "color_code": "1",
                 "zone": "Northern Michigan",
                 "marker-color": "#800080",
                 "marker-symbol": "circle"
@@ -405,6 +505,10 @@
             "type": "Feature",
             "properties": {
                 "name": "Muskegon",
+                "site_id": "MKG",
+                "frequency": "444.95000",
+                "offset": "+5",
+                "color_code": "1",
                 "zone": "Lakeshore",
                 "marker-color": "#008080",
                 "marker-symbol": "circle"
@@ -421,6 +525,10 @@
             "type": "Feature",
             "properties": {
                 "name": "Morley",
+                "site_id": "MOR",
+                "frequency": "442.21250",
+                "offset": "+5",
+                "color_code": "1",
                 "zone": "Grand Rapids Area",
                 "marker-color": "#ffff00",
                 "marker-symbol": "circle"
@@ -437,6 +545,10 @@
             "type": "Feature",
             "properties": {
                 "name": "Mt.Clemens",
+                "site_id": "MTC",
+                "frequency": "443.95000",
+                "offset": "+5",
+                "color_code": "1",
                 "zone": "Detroit Area",
                 "marker-color": "#00ffff",
                 "marker-symbol": "circle"
@@ -453,6 +565,10 @@
             "type": "Feature",
             "properties": {
                 "name": "Novi",
+                "site_id": "NVI",
+                "frequency": "442.21250",
+                "offset": "+5",
+                "color_code": "1",
                 "zone": "Detroit Area",
                 "marker-color": "#00ffff",
                 "marker-symbol": "circle"
@@ -469,6 +585,10 @@
             "type": "Feature",
             "properties": {
                 "name": "Petoskey",
+                "site_id": "PET",
+                "frequency": "444.25000",
+                "offset": "+5",
+                "color_code": "1",
                 "zone": "Northern Michigan",
                 "marker-color": "#800080",
                 "marker-symbol": "circle"
@@ -485,6 +605,10 @@
             "type": "Feature",
             "properties": {
                 "name": "Pinconning",
+                "site_id": "PIN",
+                "frequency": "444.62500",
+                "offset": "+5",
+                "color_code": "1",
                 "zone": "Flint/Saginaw",
                 "marker-color": "#ff0000",
                 "marker-symbol": "circle"
@@ -501,6 +625,10 @@
             "type": "Feature",
             "properties": {
                 "name": "Sault Ste. Marie",
+                "site_id": "SOO",
+                "frequency": "444.0000",
+                "offset": "5",
+                "color_code": "1",
                 "zone": "Northern Michigan",
                 "marker-color": "#800080",
                 "marker-symbol": "circle"
@@ -517,6 +645,10 @@
             "type": "Feature",
             "properties": {
                 "name": "Southgate",
+                "site_id": "SGT",
+                "frequency": "443.32500",
+                "offset": "+5",
+                "color_code": "1",
                 "zone": "Detroit Area",
                 "marker-color": "#00ffff",
                 "marker-symbol": "circle"
@@ -533,6 +665,10 @@
             "type": "Feature",
             "properties": {
                 "name": "Shepherd",
+                "site_id": "SHP",
+                "frequency": "442.01250",
+                "offset": "+5",
+                "color_code": "1",
                 "zone": "Flint/Saginaw",
                 "marker-color": "#ff0000",
                 "marker-symbol": "circle"
@@ -549,6 +685,10 @@
             "type": "Feature",
             "properties": {
                 "name": "West Olive",
+                "site_id": "FIL",
+                "frequency": "443.57500",
+                "offset": "+5",
+                "color_code": "1",
                 "zone": "Lakeshore",
                 "marker-color": "#008080",
                 "marker-symbol": "circle"
