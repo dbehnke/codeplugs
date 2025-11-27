@@ -1,0 +1,453 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Bancroft",
+                "zone": "Flint Area",
+                "marker-color": "#ff0000",
+                "marker-symbol": "circle"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -84.06583,
+                    42.87667
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Bay City",
+                "zone": "Saginaw/Mid-Michigan",
+                "marker-color": "#00ff00",
+                "marker-symbol": "circle"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -83.894348,
+                    43.592846
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Burnside",
+                "zone": "Thumb Area",
+                "marker-color": "#0000ff",
+                "marker-symbol": "circle"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -83.07722,
+                    43.21056
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Byron Center",
+                "zone": "Grand Rapids Area",
+                "marker-color": "#ffff00",
+                "marker-symbol": "circle"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -85.7228061,
+                    42.8122508
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Cass City",
+                "zone": "Thumb Area",
+                "marker-color": "#0000ff",
+                "marker-symbol": "circle"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -83.17467,
+                    43.60085
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Dansville",
+                "zone": "Lansing Area",
+                "marker-color": "#ff00ff",
+                "marker-symbol": "circle"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -84.30306,
+                    42.55583
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Detroit",
+                "zone": "Detroit Area",
+                "marker-color": "#00ffff",
+                "marker-symbol": "circle"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -83.045753,
+                    42.331429
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Fenton",
+                "zone": "Flint Area",
+                "marker-color": "#ff0000",
+                "marker-symbol": "circle"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -83.70500,
+                    42.79778
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Frankenmuth",
+                "zone": "Flint Area",
+                "marker-color": "#ff0000",
+                "marker-symbol": "circle"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -83.73802,
+                    43.33169
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Grand Rapids",
+                "zone": "Grand Rapids Area",
+                "marker-color": "#ffff00",
+                "marker-symbol": "circle"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -85.66809,
+                    42.96336
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Grass Lake",
+                "zone": "Ann Arbor Area",
+                "marker-color": "#ffa500",
+                "marker-symbol": "circle"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -84.21301,
+                    42.25087
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Hackleburg",
+                "zone": "Northern Michigan",
+                "marker-color": "#800080",
+                "marker-symbol": "circle"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -84.7278,
+                    45.7839
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Hamilton",
+                "zone": "Lakeshore",
+                "marker-color": "#008080",
+                "marker-symbol": "circle"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -86.00615,
+                    42.67725
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "James TWP",
+                "zone": "Saginaw/Mid-Michigan",
+                "marker-color": "#00ff00",
+                "marker-symbol": "circle"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -84.05611,
+                    43.35361
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Lansing",
+                "zone": "Lansing Area",
+                "marker-color": "#ff00ff",
+                "marker-symbol": "circle"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -84.555534,
+                    42.732536
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Lincoln",
+                "zone": "Northern Michigan",
+                "marker-color": "#800080",
+                "marker-symbol": "circle"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -83.41083,
+                    44.68528
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Lowell",
+                "zone": "Grand Rapids Area",
+                "marker-color": "#ffff00",
+                "marker-symbol": "circle"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -85.34196,
+                    42.93364
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Mayville",
+                "zone": "Thumb Area",
+                "marker-color": "#0000ff",
+                "marker-symbol": "circle"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -83.35083,
+                    43.33611
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Midland",
+                "zone": "Saginaw/Mid-Michigan",
+                "marker-color": "#00ff00",
+                "marker-symbol": "circle"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -84.234238,
+                    43.618183
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Mio",
+                "zone": "Northern Michigan",
+                "marker-color": "#800080",
+                "marker-symbol": "circle"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -84.129730,
+                    44.652237
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Muskegon",
+                "zone": "Lakeshore",
+                "marker-color": "#008080",
+                "marker-symbol": "circle"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -86.2483921,
+                    43.2341813
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Morley",
+                "zone": "Grand Rapids Area",
+                "marker-color": "#ffff00",
+                "marker-symbol": "circle"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -85.443928,
+                    43.490861
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Mt.Clemens",
+                "zone": "Detroit Area",
+                "marker-color": "#00ffff",
+                "marker-symbol": "circle"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -82.881203,
+                    42.597759
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Novi",
+                "zone": "Detroit Area",
+                "marker-color": "#00ffff",
+                "marker-symbol": "circle"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -83.475494,
+                    42.480591
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Pinconning",
+                "zone": "Saginaw/Mid-Michigan",
+                "marker-color": "#00ff00",
+                "marker-symbol": "circle"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -83.964989,
+                    43.853634
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Southgate",
+                "zone": "Detroit Area",
+                "marker-color": "#00ffff",
+                "marker-symbol": "circle"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -83.1938147,
+                    42.2139284
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Shepherd",
+                "zone": "Saginaw/Mid-Michigan",
+                "marker-color": "#00ff00",
+                "marker-symbol": "circle"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -84.73974,
+                    43.51197
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "West Olive",
+                "zone": "Lakeshore",
+                "marker-color": "#008080",
+                "marker-symbol": "circle"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -86.1464353,
+                    42.9214101
+                ]
+            }
+        }
+    ]
+}
