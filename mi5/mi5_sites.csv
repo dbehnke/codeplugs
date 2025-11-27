@@ -1,36 +1,36 @@
-Site Name,Site ID,Frequency,Offset,Color Code,Zone
-Bancroft,BAN,443.31250,+5,1,Flint/Saginaw
-Bay City,BAY,443.81250,+5,1,Flint/Saginaw
-Burnside,BRN,443.11250,+5,1,Thumb Area
-Byron Center,BYN,444.62500,+5,1,Grand Rapids Area
-Cass City,CAS,442.08750,+5,1,Thumb Area
-Dansville,DAN,444.70000,+5,1,Lansing Area
-Detroit,DET,444.00000,+5,1,Detroit Area
-Fenton,FEN,443.92500,+5,1,Flint/Saginaw
-Flint,FNT,443.38750,+5,1,Flint/Saginaw
-Frankenmuth,FRA,444.25000,+5,1,Flint/Saginaw
-Grand Haven,GHN,443.60000,+5,1,Lakeshore
-Grand Rapids,GRD,444.25000,+5,1,Grand Rapids Area
-Grass Lake,GLK,443.81250,+5,1,Ann Arbor Area
-Greenville,GRN,443.38750,+5,1,Grand Rapids Area
-Hackleburg,HAK,442.08750,+5,1,Northern Michigan
-Hamilton,HAM,443.92500,+5,1,Lakeshore
-James TWP,JAM,443.60000,+5,1,Flint/Saginaw
-Lansing,LAN,442.08750,+5,1,Lansing Area
-Lincoln,LIN,442.01250,+5,1,Northern Michigan
-Lowell,LOW,443.11250,+5,1,Grand Rapids Area
-Mackinaw/Levering,MAC,444.62500,+5,1,Northern Michigan
-Mayville,MAY,443.85000,+5,1,Thumb Area
-Midland,MID,443.95000,+5,1,Flint/Saginaw
-Milan,MIL,443.11250,+5,1,Ann Arbor Area
-Mio,MIO,444.70000,+5,1,Northern Michigan
-Muskegon,MKG,444.95000,+5,1,Lakeshore
-Morley,MOR,442.21250,+5,1,Grand Rapids Area
-Mt.Clemens,MTC,443.95000,+5,1,Detroit Area
-Novi,NVI,442.21250,+5,1,Detroit Area
-Petoskey,PET,444.25000,+5,1,Northern Michigan
-Pinconning,PIN,444.62500,+5,1,Flint/Saginaw
-Sault Ste. Marie,SOO,444.0000,5,1,Northern Michigan
-Southgate,SGT,443.32500,+5,1,Detroit Area
-Shepherd,SHP,442.01250,+5,1,Flint/Saginaw
-West Olive,FIL,443.57500,+5,1,Lakeshore
+Site Name,Site ID,Rx Frequency,Tx Frequency,Color Code,Zone
+Bancroft,BAN,443.31250,448.31250,1,Flint/Saginaw
+Bay City,BAY,443.81250,448.81250,1,Flint/Saginaw
+Burnside,BRN,443.11250,448.11250,1,Thumb Area
+Byron Center,BYN,444.62500,449.62500,1,Grand Rapids Area
+Cass City,CAS,442.08750,447.08750,1,Thumb Area
+Dansville,DAN,444.70000,449.70000,1,Lansing Area
+Detroit,DET,444.00000,449.00000,1,Detroit Area
+Fenton,FEN,443.92500,448.92500,1,Flint/Saginaw
+Flint,FNT,443.38750,448.38750,1,Flint/Saginaw
+Frankenmuth,FRA,444.25000,449.25000,1,Flint/Saginaw
+Grand Haven,GHN,443.60000,448.60000,1,Lakeshore
+Grand Rapids,GRD,444.25000,449.25000,1,Grand Rapids Area
+Grass Lake,GLK,443.81250,448.81250,1,Ann Arbor Area
+Greenville,GRN,443.38750,448.38750,1,Grand Rapids Area
+Hackleburg,HAK,442.08750,447.08750,1,Northern Michigan
+Hamilton,HAM,443.92500,448.92500,1,Lakeshore
+James TWP,JAM,443.60000,448.60000,1,Flint/Saginaw
+Lansing,LAN,442.08750,447.08750,1,Lansing Area
+Lincoln,LIN,442.01250,447.01250,1,Northern Michigan
+Lowell,LOW,443.11250,448.11250,1,Grand Rapids Area
+Mackinaw/Levering,MAC,444.62500,449.62500,1,Northern Michigan
+Mayville,MAY,443.85000,448.85000,1,Thumb Area
+Midland,MID,443.95000,448.95000,1,Flint/Saginaw
+Milan,MIL,443.11250,448.11250,1,Ann Arbor Area
+Mio,MIO,444.70000,449.70000,1,Northern Michigan
+Muskegon,MKG,444.95000,449.95000,1,Lakeshore
+Morley,MOR,442.21250,447.21250,1,Grand Rapids Area
+Mt.Clemens,MTC,443.95000,448.95000,1,Detroit Area
+Novi,NVI,442.21250,447.21250,1,Detroit Area
+Petoskey,PET,444.25000,449.25000,1,Northern Michigan
+Pinconning,PIN,444.62500,449.62500,1,Flint/Saginaw
+Sault Ste. Marie,SOO,444.00000,449.00000,1,Northern Michigan
+Southgate,SGT,443.32500,448.32500,1,Detroit Area
+Shepherd,SHP,442.01250,447.01250,1,Flint/Saginaw
+West Olive,FIL,443.57500,448.57500,1,Lakeshore
