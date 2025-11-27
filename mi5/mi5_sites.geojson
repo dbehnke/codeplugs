@@ -5,7 +5,7 @@
             "type": "Feature",
             "properties": {
                 "name": "Bancroft",
-                "zone": "Flint Area",
+                "zone": "Flint/Saginaw",
                 "marker-color": "#ff0000",
                 "marker-symbol": "circle"
             },
@@ -21,8 +21,8 @@
             "type": "Feature",
             "properties": {
                 "name": "Bay City",
-                "zone": "Saginaw/Mid-Michigan",
-                "marker-color": "#00ff00",
+                "zone": "Flint/Saginaw",
+                "marker-color": "#ff0000",
                 "marker-symbol": "circle"
             },
             "geometry": {
@@ -117,7 +117,7 @@
             "type": "Feature",
             "properties": {
                 "name": "Fenton",
-                "zone": "Flint Area",
+                "zone": "Flint/Saginaw",
                 "marker-color": "#ff0000",
                 "marker-symbol": "circle"
             },
@@ -133,7 +133,7 @@
             "type": "Feature",
             "properties": {
                 "name": "Flint",
-                "zone": "Flint Area",
+                "zone": "Flint/Saginaw",
                 "marker-color": "#ff0000",
                 "marker-symbol": "circle"
             },
@@ -149,7 +149,7 @@
             "type": "Feature",
             "properties": {
                 "name": "Frankenmuth",
-                "zone": "Flint Area",
+                "zone": "Flint/Saginaw",
                 "marker-color": "#ff0000",
                 "marker-symbol": "circle"
             },
@@ -261,8 +261,8 @@
             "type": "Feature",
             "properties": {
                 "name": "James TWP",
-                "zone": "Saginaw/Mid-Michigan",
-                "marker-color": "#00ff00",
+                "zone": "Flint/Saginaw",
+                "marker-color": "#ff0000",
                 "marker-symbol": "circle"
             },
             "geometry": {
@@ -357,8 +357,8 @@
             "type": "Feature",
             "properties": {
                 "name": "Midland",
-                "zone": "Saginaw/Mid-Michigan",
-                "marker-color": "#00ff00",
+                "zone": "Flint/Saginaw",
+                "marker-color": "#ff0000",
                 "marker-symbol": "circle"
             },
             "geometry": {
@@ -485,8 +485,8 @@
             "type": "Feature",
             "properties": {
                 "name": "Pinconning",
-                "zone": "Saginaw/Mid-Michigan",
-                "marker-color": "#00ff00",
+                "zone": "Flint/Saginaw",
+                "marker-color": "#ff0000",
                 "marker-symbol": "circle"
             },
             "geometry": {
@@ -533,8 +533,8 @@
             "type": "Feature",
             "properties": {
                 "name": "Shepherd",
-                "zone": "Saginaw/Mid-Michigan",
-                "marker-color": "#00ff00",
+                "zone": "Flint/Saginaw",
+                "marker-color": "#ff0000",
                 "marker-symbol": "circle"
             },
             "geometry": {
