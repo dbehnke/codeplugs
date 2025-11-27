@@ -1,0 +1,9 @@
+Z-4,CH mode,CH Name,RX Freq,TX Freq,Power,RX Only,Alarm ACK,Prompt,PCT,RX TS,TX TS,RX CC,TX CC,Msg Type,TX Policy,RX Group,Encryption List,Scan List,Contacts,EAS,Relay Monitor,Relay mode,Bandwidth,RX QT/DQT,TX QT/DQT,APRS
+1,Digital,Detroit-1,444.00000,449.00000,High,Off,Off,Off,Patcs,Slot 1,Slot 1,1,1,Unconfirmed Data,Polite to CC,Mi5 Swide,Off,Off,Mi5 SW1,Off,Off,Off,12.5,Off,Off,Off
+2,Digital,Detroit-2,444.00000,449.00000,High,Off,Off,Off,Patcs,Slot 2,Slot 2,1,1,Unconfirmed Data,Polite to CC,Mi5 Swide,Off,Off,Mi5 SW1,Off,Off,Off,12.5,Off,Off,Off
+3,Digital,Mt.Cleme-1,443.95000,448.95000,High,Off,Off,Off,Patcs,Slot 1,Slot 1,1,1,Unconfirmed Data,Polite to CC,Mi5 Swide,Off,Off,Mi5 SW1,Off,Off,Off,12.5,Off,Off,Off
+4,Digital,Mt.Cleme-2,443.95000,448.95000,High,Off,Off,Off,Patcs,Slot 2,Slot 2,1,1,Unconfirmed Data,Polite to CC,Mi5 Swide,Off,Off,Mi5 SW1,Off,Off,Off,12.5,Off,Off,Off
+5,Digital,Novi-1,442.21250,447.21250,High,Off,Off,Off,Patcs,Slot 1,Slot 1,1,1,Unconfirmed Data,Polite to CC,Mi5 Swide,Off,Off,Mi5 SW1,Off,Off,Off,12.5,Off,Off,Off
+6,Digital,Novi-2,442.21250,447.21250,High,Off,Off,Off,Patcs,Slot 2,Slot 2,1,1,Unconfirmed Data,Polite to CC,Mi5 Swide,Off,Off,Mi5 SW1,Off,Off,Off,12.5,Off,Off,Off
+7,Digital,Southgat-1,443.32500,448.32500,High,Off,Off,Off,Patcs,Slot 1,Slot 1,1,1,Unconfirmed Data,Polite to CC,Mi5 Swide,Off,Off,Mi5 SW1,Off,Off,Off,12.5,Off,Off,Off
+8,Digital,Southgat-2,443.32500,448.32500,High,Off,Off,Off,Patcs,Slot 2,Slot 2,1,1,Unconfirmed Data,Polite to CC,Mi5 Swide,Off,Off,Mi5 SW1,Off,Off,Off,12.5,Off,Off,Off

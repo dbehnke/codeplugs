@@ -1,0 +1,19 @@
+Z-4,CH mode,CH Name,RX Freq,TX Freq,Power,RX Only,Alarm ACK,Prompt,PCT,RX TS,TX TS,RX CC,TX CC,Msg Type,TX Policy,RX Group,Encryption List,Scan List,Contacts,EAS,Relay Monitor,Relay mode,Bandwidth,RX QT/DQT,TX QT/DQT,APRS
+1,Digital,Bancroft-1,443.31250,448.31250,High,Off,Off,Off,Patcs,Slot 1,Slot 1,1,1,Unconfirmed Data,Polite to CC,Mi5 Swide,Off,Off,Mi5 SW1,Off,Off,Off,12.5,Off,Off,Off
+2,Digital,Bancroft-2,443.31250,448.31250,High,Off,Off,Off,Patcs,Slot 2,Slot 2,1,1,Unconfirmed Data,Polite to CC,Mi5 Swide,Off,Off,Mi5 SW1,Off,Off,Off,12.5,Off,Off,Off
+3,Digital,BayCity-1,443.81250,448.81250,High,Off,Off,Off,Patcs,Slot 1,Slot 1,1,1,Unconfirmed Data,Polite to CC,Mi5 Swide,Off,Off,Mi5 SW1,Off,Off,Off,12.5,Off,Off,Off
+4,Digital,BayCity-2,443.81250,448.81250,High,Off,Off,Off,Patcs,Slot 2,Slot 2,1,1,Unconfirmed Data,Polite to CC,Mi5 Swide,Off,Off,Mi5 SW1,Off,Off,Off,12.5,Off,Off,Off
+5,Digital,Fenton-1,443.92500,448.92500,High,Off,Off,Off,Patcs,Slot 1,Slot 1,1,1,Unconfirmed Data,Polite to CC,Mi5 Swide,Off,Off,Mi5 SW1,Off,Off,Off,12.5,Off,Off,Off
+6,Digital,Fenton-2,443.92500,448.92500,High,Off,Off,Off,Patcs,Slot 2,Slot 2,1,1,Unconfirmed Data,Polite to CC,Mi5 Swide,Off,Off,Mi5 SW1,Off,Off,Off,12.5,Off,Off,Off
+7,Digital,Flint-1,443.38750,448.38750,High,Off,Off,Off,Patcs,Slot 1,Slot 1,1,1,Unconfirmed Data,Polite to CC,Mi5 Swide,Off,Off,Mi5 SW1,Off,Off,Off,12.5,Off,Off,Off
+8,Digital,Flint-2,443.38750,448.38750,High,Off,Off,Off,Patcs,Slot 2,Slot 2,1,1,Unconfirmed Data,Polite to CC,Mi5 Swide,Off,Off,Mi5 SW1,Off,Off,Off,12.5,Off,Off,Off
+9,Digital,Frankenm-1,444.25000,449.25000,High,Off,Off,Off,Patcs,Slot 1,Slot 1,1,1,Unconfirmed Data,Polite to CC,Mi5 Swide,Off,Off,Mi5 SW1,Off,Off,Off,12.5,Off,Off,Off
+10,Digital,Frankenm-2,444.25000,449.25000,High,Off,Off,Off,Patcs,Slot 2,Slot 2,1,1,Unconfirmed Data,Polite to CC,Mi5 Swide,Off,Off,Mi5 SW1,Off,Off,Off,12.5,Off,Off,Off
+11,Digital,JamesTWP-1,443.60000,448.60000,High,Off,Off,Off,Patcs,Slot 1,Slot 1,1,1,Unconfirmed Data,Polite to CC,Mi5 Swide,Off,Off,Mi5 SW1,Off,Off,Off,12.5,Off,Off,Off
+12,Digital,JamesTWP-2,443.60000,448.60000,High,Off,Off,Off,Patcs,Slot 2,Slot 2,1,1,Unconfirmed Data,Polite to CC,Mi5 Swide,Off,Off,Mi5 SW1,Off,Off,Off,12.5,Off,Off,Off
+13,Digital,Midland-1,443.95000,448.95000,High,Off,Off,Off,Patcs,Slot 1,Slot 1,1,1,Unconfirmed Data,Polite to CC,Mi5 Swide,Off,Off,Mi5 SW1,Off,Off,Off,12.5,Off,Off,Off
+14,Digital,Midland-2,443.95000,448.95000,High,Off,Off,Off,Patcs,Slot 2,Slot 2,1,1,Unconfirmed Data,Polite to CC,Mi5 Swide,Off,Off,Mi5 SW1,Off,Off,Off,12.5,Off,Off,Off
+15,Digital,Pinconni-1,444.62500,449.62500,High,Off,Off,Off,Patcs,Slot 1,Slot 1,1,1,Unconfirmed Data,Polite to CC,Mi5 Swide,Off,Off,Mi5 SW1,Off,Off,Off,12.5,Off,Off,Off
+16,Digital,Pinconni-2,444.62500,449.62500,High,Off,Off,Off,Patcs,Slot 2,Slot 2,1,1,Unconfirmed Data,Polite to CC,Mi5 Swide,Off,Off,Mi5 SW1,Off,Off,Off,12.5,Off,Off,Off
+17,Digital,Shepherd-1,442.01250,447.01250,High,Off,Off,Off,Patcs,Slot 1,Slot 1,1,1,Unconfirmed Data,Polite to CC,Mi5 Swide,Off,Off,Mi5 SW1,Off,Off,Off,12.5,Off,Off,Off
+18,Digital,Shepherd-2,442.01250,447.01250,High,Off,Off,Off,Patcs,Slot 2,Slot 2,1,1,Unconfirmed Data,Polite to CC,Mi5 Swide,Off,Off,Mi5 SW1,Off,Off,Off,12.5,Off,Off,Off
