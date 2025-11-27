@@ -1,3 +1,3 @@
 Z-4,CH mode,CH Name,RX Freq,TX Freq,Power,RX Only,Alarm ACK,Prompt,PCT,RX TS,TX TS,RX CC,TX CC,Msg Type,TX Policy,RX Group,Encryption List,Scan List,Contacts,EAS,Relay Monitor,Relay mode,Bandwidth,RX QT/DQT,TX QT/DQT,APRS
-1,Digital,Dansville ,444.70000,449.70000,High,Off,Off,Off,Patcs,Slot 1,Slot 1,1,1,Unconfirmed Data,Polite to CC,Mi5 Swide ,Off,Off,Mi5 SW 1  ,Off,Off,Off,12.5,Off,Off,Off
-2,Digital,Lansing   ,442.08750,447.08750,High,Off,Off,Off,Patcs,Slot 1,Slot 1,1,1,Unconfirmed Data,Polite to CC,Mi5 Swide ,Off,Off,Mi5 SW 1  ,Off,Off,Off,12.5,Off,Off,Off
+1,Digital,Dansville ,444.70000,449.70000,High,Off,Off,Off,Patcs,Slot 1,Slot 1,1,1,Unconfirmed Data,Polite to CC,Mi5 Swide ,Off,Off,Mi5 SW1   ,Off,Off,Off,12.5,Off,Off,Off
+2,Digital,Lansing   ,442.08750,447.08750,High,Off,Off,Off,Patcs,Slot 1,Slot 1,1,1,Unconfirmed Data,Polite to CC,Mi5 Swide ,Off,Off,Mi5 SW1   ,Off,Off,Off,12.5,Off,Off,Off
