@@ -1,0 +1,20 @@
+No.,Channel Name,Channel Type,RX Frequency[MHz],TX Frequency[MHz],Power,Band Width,Scan List,TX Admit,Emergency System,Squelch Level,APRS Report Type,Forbid TX,APRS Receive,Forbid Talkaround,Auto Scan,Lone Work,Emergency Indicator,Emergency ACK,Analog APRS PTT Mode,Digital APRS PTT Mode,TX Contact,RX Group List,Color Code,Time Slot,Encryption,Encryption ID,APRS Report Channel,Direct Dual Mode,Private Confirm,Short Data Confirm,DMR ID,CTC/DCS Decode,CTC/DCS Encode,Scramble,RX Squelch Mode,Signaling Type,PTT ID,VOX Function,PTT ID Display
+1,KF8S,Analog,443.40000,443.40000,Low,25KHz,None,Allow TX,None,3,Off,0,0,0,0,0,0,0,0,0,XLX 6,RX Group 1,1,Slot 1,0,None,1,0,0,0,KF8S Dave,110.9,110.9,None,Carrier/CTC,None,OFF,0,0
+2,KF8S TS1,Digital,449.40000,441.40000,Low,12.5KHz,None,Always,None,3,Off,0,0,0,0,0,0,0,0,0,Parrot,None,1,Slot 1,0,None,1,0,0,0,KF8S Dave,None,None,None,Carrier/CTC,None,OFF,0,0
+3,KF8S TS2,Digital,449.40000,441.40000,Low,12.5KHz,None,Always,None,3,Off,0,0,0,0,0,0,0,0,0,Parrot,None,1,Slot 2,0,None,1,0,0,0,KF8S Dave,None,None,None,Carrier/CTC,None,OFF,0,0
+4,OpenSpot,Digital,438.40000,438.40000,Low,12.5KHz,Home Scan,Always,None,3,Off,0,0,0,0,0,0,0,0,0,Local 9,None,0,Slot 2,0,None,1,0,0,0,KF8S Dave,None,None,None,Carrier/CTC,None,OFF,0,0
+5,KC8UMP,Analog,443.62500,448.62500,High,25KHz,Home Scan,Allow TX,None,7,Off,0,0,0,0,0,0,0,0,0,XLX 6,None,0,Slot 1,0,None,1,0,0,0,KF8S Dave,151.4,151.4,None,Carrier/CTC,None,OFF,0,0
+6,KC8LTS,Analog,442.17500,447.17500,Low,25KHz,None,Allow TX,None,3,Off,0,0,0,0,0,0,0,0,0,XLX 6,None,0,Slot 1,0,None,1,0,0,0,KF8S Dave,123.0,123.0,None,Carrier/CTC,None,OFF,0,0
+7,K8FBI-Warren,Analog,442.60000,447.60000,High,25KHz,None,Allow TX,None,3,Off,0,0,0,0,0,0,0,0,0,XLX 6,None,0,Slot 1,0,None,1,0,0,0,KF8S Dave,123.0,123.0,None,Carrier/CTC,None,OFF,0,0
+8,K8FBI-Romeo,Analog,442.07500,447.07500,High,25KHz,None,Allow TX,None,3,Off,0,0,0,0,0,0,0,0,0,XLX 6,None,0,Slot 1,0,None,1,0,0,0,KF8S Dave,123.0,60.0,None,Carrier/CTC,None,OFF,0,0
+9,K8FBI-Richmond,Analog,442.22500,447.22500,High,25KHz,None,Allow TX,None,3,Off,0,0,0,0,0,0,0,0,0,XLX 6,None,0,Slot 1,0,None,1,0,0,0,KF8S Dave,123.0,123.0,None,Carrier/CTC,None,OFF,0,0
+10,K8FBI-Bloomfield,Analog,442.50000,447.50000,High,12.5KHz,None,Allow TX,None,3,Off,0,0,0,0,0,0,0,0,0,XLX 6,None,0,Slot 1,0,None,1,0,0,0,KF8S Dave,123.0,123.0,None,Carrier/CTC,None,OFF,0,0
+11,Macomb675,Analog,462.67500,467.67500,High,25KHz,None,Allow TX,None,3,Off,0,0,0,0,0,0,0,0,0,XLX 6,None,0,Slot 1,0,None,1,0,0,0,KF8S Dave,141.3,141.3,None,Carrier/CTC,None,OFF,0,0
+12,Mi5-MTC-TS1,Digital,443.95000,448.95000,High,12.5KHz,None,Color Code Idle,None,3,Off,0,0,0,0,0,0,0,0,0,Mi5-Statewide1,None,1,Slot 1,0,None,1,0,0,0,KF8S Dave,None,None,None,Carrier/CTC,None,OFF,0,0
+13,Mi5-MTC-TS2,Digital,443.95000,448.95000,High,12.5KHz,None,Color Code Idle,None,3,Off,0,0,0,0,0,0,0,0,0,Mi5-Statewide2,None,1,Slot 2,0,None,1,0,0,0,KF8S Dave,None,None,None,Carrier/CTC,None,OFF,0,0
+14,WW8GM,Analog,443.07500,448.07500,High,25KHz,None,Allow TX,None,3,Off,0,0,0,0,0,0,0,0,0,XLX 6,None,0,Slot 1,0,None,1,0,0,0,KF8S Dave,123.0,123.0,None,Carrier/CTC,None,OFF,0,0
+15,K8PLW,Analog,442.10000,447.10000,High,25KHz,None,Allow TX,None,3,Off,0,0,0,0,0,0,0,0,0,XLX 6,None,0,Slot 1,0,None,1,0,0,0,KF8S Dave,107.2,107.2,None,Carrier/CTC,None,OFF,0,0
+16,K8UO,Analog,147.18000,147.78000,High,25KHz,None,Allow TX,None,1,Off,0,0,0,0,0,0,0,0,0,XLX 6,None,0,Slot 1,0,None,1,0,0,0,KF8S Dave,None,100.0,None,Carrier/CTC,None,OFF,0,0
+17,N8LC,Analog,147.08000,147.68000,High,12.5KHz,None,Allow TX,None,1,Off,0,0,0,0,0,0,0,0,0,XLX 6,None,0,Slot 1,0,None,1,0,0,0,KF8S Dave,None,100.0,None,Carrier/CTC,None,OFF,0,0
+18,WA8MAC,Analog,147.20000,147.80000,High,25KHz,None,Allow TX,None,3,Off,0,0,0,0,0,0,0,0,0,XLX 6,None,0,Slot 1,0,None,1,0,0,0,KF8S Dave,100.0,100.0,None,Carrier/CTC,None,OFF,0,0
+19,DblNickel,Analog,443.55000,448.55000,High,25KHz,None,Allow TX,None,3,Off,0,0,0,0,0,0,0,0,0,XLX 6,None,0,Slot 1,0,None,1,0,0,0,KF8S Dave,107.2,107.2,None,Carrier/CTC,None,OFF,0,0

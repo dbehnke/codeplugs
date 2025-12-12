@@ -1,0 +1,29 @@
+# Binaries
+codeplugs
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+
+# OS Specific
+.DS_Store
+
+# Test Artifacts and Temporary Files
+test_*.csv
+test_*.txt
+test-*.db*
+output_*/
+tmp/
+
+# Editor/IDE
+.vscode/
+.idea/
+
+# User samples (if desired to ignore, but maybe keep for reference? user's call. I'll ignore specific large dirs if keys)
+# For now, ignoring the specific output dir we created
+output_at890/
+
+# Go
+go.work
