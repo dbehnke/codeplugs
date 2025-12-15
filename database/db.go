@@ -25,10 +25,22 @@ func Connect(dbPath string) {
 
 	// Register Join Table for Ordering
 	DB.SetupJoinTable(&models.Zone{}, "Channels", &models.ZoneChannel{})
+	DB.SetupJoinTable(&models.ScanList{}, "Channels", &models.ScanListChannel{})
 
 	// Auto Migrate
-	err = DB.AutoMigrate(&models.Channel{}, &models.Contact{}, &models.Zone{}, &models.DigitalContact{}, &models.ZoneChannel{})
+	err = DB.AutoMigrate(&models.Channel{}, &models.Contact{}, &models.Zone{}, &models.DigitalContact{}, &models.ZoneChannel{}, &models.ScanList{}, &models.ScanListChannel{})
 	if err != nil {
 		log.Fatal("Failed to migrate database:", err)
+	}
+}
+
+func Close() {
+	if DB != nil {
+		sqlDB, err := DB.DB()
+		if err != nil {
+			log.Println("Error getting SQL DB from GORM:", err)
+			return
+		}
+		sqlDB.Close()
 	}
 }

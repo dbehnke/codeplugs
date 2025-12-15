@@ -139,7 +139,8 @@ func main() {
 	}
 
 	if *importFile != "" {
-		if *radio == "dm32uv" {
+		switch *radio {
+		case "dm32uv":
 			info, err := os.Stat(*importFile)
 			if err != nil {
 				log.Fatalf("Error stating import path: %v", err)
@@ -193,7 +194,7 @@ func main() {
 			}
 			fmt.Println("Import complete.")
 			return
-		} else if *radio == "at890" {
+		case "at890":
 			fmt.Printf("Importing AnyTone 890 from %s...\n", *importFile)
 			// Open file for reading
 			f, err := os.Open(*importFile)
@@ -458,6 +459,8 @@ func startServer(port string) {
 	http.HandleFunc("/api/contacts", handleContacts)
 	http.HandleFunc("/api/zones", handleZones)
 	http.HandleFunc("/api/zones/assign", handleZoneAssignment)
+	http.HandleFunc("/api/scanlists", handleScanLists)
+	http.HandleFunc("/api/scanlists/assign", handleScanListAssignment)
 	http.HandleFunc("/api/ws", handleWebSocket)
 
 	// Static Files
@@ -466,18 +469,44 @@ func startServer(port string) {
 		log.Fatal(err)
 	}
 
-	http.Handle("/", http.FileServer(http.FS(distFS)))
+	// SPA Handler: Serve index.html for any route not matched by API
+	fileServer := http.FileServer(http.FS(distFS))
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		path := strings.TrimPrefix(r.URL.Path, "/")
+		if path == "" {
+			path = "index.html"
+		}
+
+		f, err := distFS.Open(path)
+		if err == nil {
+			f.Close()
+			fileServer.ServeHTTP(w, r)
+			return
+		}
+
+		// Fallback to index.html for unknown routes (SPA)
+		f, err = distFS.Open("index.html")
+		if err != nil {
+			http.Error(w, "index.html missing", http.StatusInternalServerError)
+			return
+		}
+		defer f.Close()
+
+		stat, _ := f.Stat()
+		http.ServeContent(w, r, "index.html", stat.ModTime(), f.(io.ReadSeeker))
+	})
 
 	fmt.Printf("Starting server on http://localhost:%s\n", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
 
 func handleChannels(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
+	switch r.Method {
+	case "GET":
 		var channels []models.Channel
 		database.DB.Find(&channels)
 		json.NewEncoder(w).Encode(channels)
-	} else if r.Method == "POST" {
+	case "POST":
 		var ch models.Channel
 		if err := json.NewDecoder(r.Body).Decode(&ch); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -489,7 +518,7 @@ func handleChannels(w http.ResponseWriter, r *http.Request) {
 			database.DB.Save(&ch)
 		}
 		json.NewEncoder(w).Encode(ch)
-	} else if r.Method == "DELETE" {
+	case "DELETE":
 		// Handle delete... need ID from URL or body
 		// Simplified: assume ID in body for now or query param
 		id := r.URL.Query().Get("id")
@@ -599,6 +628,65 @@ func handleImport(w http.ResponseWriter, r *http.Request) {
 			}
 
 			fmt.Fprintf(w, "Zip Import Complete")
+			return
+		}
+
+		if format == "db" {
+			// Database Restore
+			file, _, err := r.FormFile("file")
+			if err != nil {
+				http.Error(w, "Error retrieving file", http.StatusBadRequest)
+				return
+			}
+			defer file.Close()
+
+			// Save to temp
+			tempFile, err := os.CreateTemp("", "restore-*.db")
+			if err != nil {
+				http.Error(w, "Error creating temp file", http.StatusInternalServerError)
+				return
+			}
+			tempName := tempFile.Name()
+			defer os.Remove(tempName) // Clean up temp after move (if move fails)
+
+			if _, err := io.Copy(tempFile, file); err != nil {
+				tempFile.Close()
+				http.Error(w, "Error saving file", http.StatusInternalServerError)
+				return
+			}
+			tempFile.Close()
+
+			// Perform Restore
+			// 1. Close DB
+			database.Close()
+
+			// 2. Overwrite codeplugs.db
+			// We assume standard path "codeplugs.db" or from flag.
+			// Ideally we should track the dbPath in main (global) or pass it.
+			// For now, assuming "codeplugs.db" is safe as default flag, but let's try to verify.
+			// Actually, main has dbPath flag but it's local. We should export or store it if dynamic.
+			// Assuming "codeplugs.db" for this MVP.
+			targetDB := "codeplugs.db" // TODO: Use actual configured path
+
+			// Backup existing just in case?
+			os.Rename(targetDB, targetDB+".bak")
+
+			// Move temp to target
+			// Rename might fail across devices, so Copy is safer, but Rename is atomic-ish.
+			// Given temp is usually /tmp, use Copy.
+			src, _ := os.Open(tempName)
+			dst, _ := os.Create(targetDB)
+			io.Copy(dst, src)
+			src.Close()
+			dst.Close()
+
+			// 3. Reconnect
+			database.Connect(targetDB)
+
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"message": "Database restored successfully. Please refresh.",
+			})
 			return
 		}
 
@@ -750,6 +838,13 @@ func handleImport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Handle Overwrite
+	overwrite := r.FormValue("overwrite") == "true"
+	if overwrite {
+		// Clear Channels table
+		database.DB.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&models.Channel{})
+	}
+
 	var channels []models.Channel
 
 	// Open temp file for reading
@@ -780,11 +875,13 @@ func handleImport(w http.ResponseWriter, r *http.Request) {
 	count := 0
 	skipped := 0
 	for _, ch := range channels {
-		// Simple deduplication
-		var existing models.Channel
-		if err := database.DB.Where("name = ? AND rx_frequency = ?", ch.Name, ch.RxFrequency).First(&existing).Error; err == nil {
-			skipped++
-			continue
+		// Simple deduplication only if NOT overwrite
+		if !overwrite {
+			var existing models.Channel
+			if err := database.DB.Where("name = ? AND rx_frequency = ?", ch.Name, ch.RxFrequency).First(&existing).Error; err == nil {
+				skipped++
+				continue
+			}
 		}
 		if result := database.DB.Create(&ch); result.Error == nil {
 			count++
@@ -799,287 +896,291 @@ func handleImport(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleExport(w http.ResponseWriter, r *http.Request) {
-	// Generate CSV and serve as download
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	format := r.URL.Query().Get("format")
 	radio := r.URL.Query().Get("radio")
 
-	if format == "" {
-		if radio == "dm32uv" {
-			format = "zip"
-		} else {
-			format = "db25d"
+	// Support multi-zone selection
+	// zone_id can be passed multiple times: ?zone_id=1&zone_id=2
+	// or comma separated: ?zone_id=1,2
+	zoneIDsStr := r.URL.Query()["zone_id"]
+	var zoneIDs []int
+
+	// Parse multi-value param
+	for _, idStr := range zoneIDsStr {
+		// Split by comma just in case
+		parts := strings.Split(idStr, ",")
+		for _, p := range parts {
+			if id, err := strconv.Atoi(strings.TrimSpace(p)); err == nil {
+				zoneIDs = append(zoneIDs, id)
+			}
 		}
 	}
+
+	// If explicit radio param is used, it overrides format for now, or aliases it.
+	// We'll normalize to `format` being the driver.
+	if format == "" && radio != "" {
+		format = radio
+	}
+
+	if format == "db" {
+		// Database Backup
+		// Flush WAL before creating file?
+		// We can just serve the file. SQLite handles read while open usually.
+		filename := "codeplugs.db" // TODO: Use actual path
+
+		w.Header().Set("Content-Type", "application/x-sqlite3")
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
+
+		http.ServeFile(w, r, filename)
+		return
+	}
+
+	if format == "dm32uv" || format == "at890" {
+		// Export as Zip
+		w.Header().Set("Content-Type", "application/zip")
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"codeplug_%s.zip\"", format))
+
+		zipWriter := zip.NewWriter(w)
+		defer zipWriter.Close()
+
+		if format == "dm32uv" {
+			// DM32UV Export to Zip
+			// 1. Channels
+			var channels []models.Channel
+			db := database.DB.Model(&models.Channel{}).Preload("Contact").Where("skip = ?", false)
+
+			if len(zoneIDs) > 0 {
+				db = db.Joins("JOIN zone_channels ON zone_channels.channel_id = channels.id").
+					Where("zone_channels.zone_id IN ?", zoneIDs)
+			}
+
+			db.Find(&channels)
+
+			f, _ := zipWriter.Create("channels.csv")
+			exporter.ExportDM32UVChannels(channels, f)
+
+			// 2. Zones
+			var zones []models.Zone
+			zdb := database.DB.Preload("Channels")
+			if len(zoneIDs) > 0 {
+				zdb = zdb.Where("id IN ?", zoneIDs)
+			}
+			zdb.Find(&zones)
+
+			f, _ = zipWriter.Create("zones.csv")
+			exporter.ExportDM32UVZones(zones, f)
+
+			// 3. Talkgroups (All)
+			var talkgroups []models.Contact
+			database.DB.Where("type = ?", models.ContactTypeGroup).Find(&talkgroups)
+			f, _ = zipWriter.Create("talkgroups.csv")
+			exporter.ExportDM32UVTalkgroups(talkgroups, f)
+
+			// 4. Digital Contacts (All - filtered by limit?)
+			var digitalContacts []models.DigitalContact
+			database.DB.Limit(50000).Find(&digitalContacts)
+			f, _ = zipWriter.Create("digital_contacts.csv")
+			exporter.ExportDM32UVDigitalContacts(digitalContacts, f)
+
+		} else if format == "at890" {
+			// AnyTone 890 Export
+			tempDir, err := os.MkdirTemp("", "at890_export_*")
+			if err != nil {
+				http.Error(w, "Failed to create temp dir", http.StatusInternalServerError)
+				return
+			}
+			defer os.RemoveAll(tempDir) // Clean up
+
+			// For now, exports everything.
+			if err := exporter.ExportAnyTone890(database.DB, tempDir); err != nil {
+				http.Error(w, "Failed to export 890", http.StatusInternalServerError)
+				return
+			}
+
+			// Add files from tempDir to zip
+			err = filepath.Walk(tempDir, func(path string, info os.FileInfo, err error) error {
+				if err != nil {
+					return err
+				}
+				if info.IsDir() {
+					return nil
+				}
+
+				// Create zip header
+				relPath, _ := filepath.Rel(tempDir, path)
+				f, err := zipWriter.Create(relPath)
+				if err != nil {
+					return err
+				}
+
+				content, _ := os.ReadFile(path)
+				f.Write(content)
+				return nil
+			})
+		}
+		return
+	}
+
+	// Helper function for DB25D / CHIRP CSV export
+	w.Header().Set("Content-Type", "text/csv")
+
+	filename := "codeplug.csv"
+	if format == "chirp" {
+		filename = "chirp_export.csv"
+	}
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
 
 	var channels []models.Channel
 	query := database.DB.Model(&models.Channel{}).Preload("Contact").Where("skip = ?", false)
 
-	// Zone Filtering
-	zoneName := r.URL.Query().Get("zone")
-	if zoneName != "" {
-		// Verify zone exists
-		var z models.Zone
-		if err := database.DB.Where("name = ?", zoneName).First(&z).Error; err == nil {
-			query = query.Joins("JOIN zone_channels ON zone_channels.channel_id = channels.id").
-				Where("zone_channels.zone_id = ?", z.ID).
-				Order("sort_order ASC")
-		}
+	if len(zoneIDs) > 0 {
+		query = query.Joins("JOIN zone_channels ON zone_channels.channel_id = channels.id").
+			Where("zone_channels.zone_id IN ?", zoneIDs)
 	}
+
 	query.Find(&channels)
 
-	useFirstName := r.URL.Query().Get("use_first_name") == "true"
-
-	// Handle Exports
-	if format == "zip" {
-		w.Header().Set("Content-Type", "application/zip")
-		w.Header().Set("Content-Disposition", "attachment; filename=export.zip")
-		zipWriter := zip.NewWriter(w)
-		defer zipWriter.Close()
-
-		// 1. Digital Contacts
-		if radio == "dm32uv" {
-			dcFile, err := zipWriter.Create("digital_contacts.csv")
-			if err != nil {
-				log.Printf("Error creating zip entry: %v", err)
-				return
-			}
-			var bitContacts []models.DigitalContact
-			// Note: We might want filtering logic here too, but for web export let's export all or apply simple limit
-			database.DB.Limit(50000).Find(&bitContacts)
-			exporter.ExportDM32UVDigitalContacts(bitContacts, dcFile)
-
-			// 2. Talkgroups
-			tgFile, err := zipWriter.Create("talkgroups.csv")
-			if err != nil {
-				log.Printf("Error creating zip entry: %v", err)
-				return
-			}
-			var talkgroups []models.Contact
-			database.DB.Where("type = ?", models.ContactTypeGroup).Find(&talkgroups)
-			exporter.ExportDM32UVTalkgroups(talkgroups, tgFile)
-
-			// 3. Channels
-			chanFile, err := zipWriter.Create("channels.csv")
-			if err != nil {
-				log.Printf("Error creating zip entry: %v", err)
-				return
-			}
-			exporter.ExportDM32UVChannels(channels, chanFile)
-
-			// 4. Zones
-			zoneFile, err := zipWriter.Create("zones.csv")
-			if err != nil {
-				log.Printf("Error creating zip entry: %v", err)
-				return
-			}
-			var zones []models.Zone
-			database.DB.Preload("Channels").Find(&zones)
-			exporter.ExportDM32UVZones(zones, zoneFile)
-		}
-		return
-	}
-
-	tempFile, err := os.CreateTemp("", "export-*.csv")
-	if err != nil {
-		http.Error(w, "Error creating temp file", http.StatusInternalServerError)
-		return
-	}
-	defer os.Remove(tempFile.Name())
-
-	// Open temp file for writing
-	f, err := os.OpenFile(tempFile.Name(), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
-	if err != nil {
-		http.Error(w, "Error opening temp file", http.StatusInternalServerError)
-		return
-	}
-	defer f.Close()
-
 	if format == "chirp" {
-		exporter.ExportChirpCSV(channels, f)
+		exporter.ExportChirpCSV(channels, w)
 	} else {
-		exporter.ExportDB25D(channels, f, useFirstName)
+		// Default DB25-D
+		exporter.ExportDB25D(channels, w, false) // UseQuotes = false for browser download? or true? Standard usually ok.
 	}
-
-	http.ServeFile(w, r, tempFile.Name())
 }
 
 func handleContacts(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		query := database.DB.Model(&models.Contact{})
+	switch r.Method {
+	case "GET":
+		source := r.URL.Query().Get("source") // 'User' or 'RadioID'
 
-		// Filtering
-		// source := r.URL.Query().Get("source")
-		// if source != "" {
-		// 	query = query.Where("source = ?", source)
-		// }
+		if source == "RadioID" {
+			// Paginated DigitalContact
+			page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+			if page < 1 {
+				page = 1
+			}
+			limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+			if limit < 1 {
+				limit = 50
+			}
+			search := r.URL.Query().Get("search")
+			sort := r.URL.Query().Get("sort")
+			order := r.URL.Query().Get("order")
 
-		// Search
-		search := r.URL.Query().Get("search")
-		if search != "" {
-			searchLower := "%" + strings.ToLower(search) + "%"
-			searchExact := "%" + search + "%"
-			// Only Name and DMRID remain in Contact
-			query = query.Where("LOWER(name) LIKE ? OR CAST(dmr_id AS TEXT) LIKE ?", searchLower, searchExact)
-		}
+			offset := (page - 1) * limit
 
-		// Sorting
-		sortField := r.URL.Query().Get("sort")
-		order := r.URL.Query().Get("order")
-		if order != "desc" {
-			order = "asc"
-		}
+			var contacts []models.DigitalContact
+			var total int64
 
-		switch sortField {
-		case "dmr_id":
-			query = query.Order("dmr_id " + order)
-		case "name":
-			query = query.Order("name " + order)
-		default:
-			query = query.Order("name ASC")
-		}
+			db := database.DB.Model(&models.DigitalContact{})
 
-		// Pagination
-		page, _ := strconv.Atoi(r.URL.Query().Get("page"))
-		if page < 1 {
-			page = 1
-		}
-		limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-		if limit < 1 {
-			limit = 100 // Default limit
-		}
-		offset := (page - 1) * limit
+			if search != "" {
+				term := "%" + search + "%"
+				// Cast DMRID to string for search?
+				db = db.Where("name LIKE ? OR callsign LIKE ? OR CAST(dmr_id AS TEXT) LIKE ?", term, term, term)
+			}
 
-		var total int64
-		query.Count(&total)
+			db.Count(&total) // Count filtered Total
 
-		var contacts []models.Contact
-		result := query.Limit(limit).Offset(offset).Find(&contacts)
-		if result.Error != nil {
-			http.Error(w, result.Error.Error(), http.StatusInternalServerError)
+			if sort != "" {
+				if order != "desc" {
+					order = "asc"
+				}
+				db = db.Order(fmt.Sprintf("%s %s", sort, order))
+			} else {
+				db = db.Order("id asc")
+			}
+
+			db.Limit(limit).Offset(offset).Find(&contacts)
+
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"data": contacts,
+				"meta": map[string]interface{}{
+					"total": total,
+					"page":  page,
+					"limit": limit,
+				},
+			})
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
+		// Default 'User' contacts (Talkgroups) - No pagination needed yet
+		var contacts []models.Contact
+		database.DB.Find(&contacts)
+
+		// Wrap in { data: [] } to match new format standard or valid array
+		// But frontend expects array for talkgroups currently? Let's check frontend.
+		// Frontend "fetchTalkgroups" expects result.data.
+
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"data": contacts,
-			"meta": map[string]interface{}{
-				"total": total,
-				"page":  page,
-				"limit": limit,
-			},
 		})
-	} else if r.Method == "POST" {
+
+	case "POST":
 		var c models.Contact
 		if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-
-		if err := c.Validate(); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		var result *gorm.DB
 		if c.ID == 0 {
-			result = database.DB.Create(&c)
+			database.DB.Create(&c)
 		} else {
-			result = database.DB.Save(&c)
-		}
-		if result.Error != nil {
-			http.Error(w, result.Error.Error(), http.StatusInternalServerError)
-			return
+			database.DB.Save(&c)
 		}
 		json.NewEncoder(w).Encode(c)
-	} else if r.Method == "DELETE" {
+	case "DELETE":
 		id := r.URL.Query().Get("id")
 		if id != "" {
-			// Check if used
+			// Check if used?
 			var count int64
 			database.DB.Model(&models.Channel{}).Where("contact_id = ?", id).Count(&count)
 			if count > 0 {
-				http.Error(w, "Cannot delete contact that is in use by a channel", http.StatusConflict)
+				http.Error(w, "Contact is in use by channels", http.StatusConflict)
 				return
 			}
-
 			database.DB.Delete(&models.Contact{}, id)
 			w.WriteHeader(http.StatusOK)
 		}
 	}
 }
 
-func resolveContacts(channels []models.Channel) {
-	for i := range channels {
-		if channels[i].TxContact != "" {
-			var contact models.Contact
-			// Find by Name
-			if err := database.DB.Where("name = ?", channels[i].TxContact).First(&contact).Error; err == nil {
-				channels[i].ContactID = &contact.ID
-			}
-		}
-	}
-}
-
-func handleWebSocket(w http.ResponseWriter, r *http.Request) {
-	conn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	hub.register <- conn
-
-	// Send current status immediately
-	broadcastProgress()
-
-	// Keep connection alive/handle control messages if needed
-	// For now, just block until close
-	for {
-		_, _, err := conn.ReadMessage()
-		if err != nil {
-			hub.unregister <- conn
-			break
-		}
-	}
-}
-
 func handleZones(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		// List or Get One
-		id := r.URL.Query().Get("id")
-		if id != "" {
-			var zone models.Zone
-			// Preload Channels in Order
-			if err := database.DB.Preload("Channels", func(db *gorm.DB) *gorm.DB {
-				return db.Joins("JOIN zone_channels ON zone_channels.channel_id = channels.id").
-					Order("zone_channels.sort_order ASC")
-			}).First(&zone, id).Error; err != nil {
-				http.Error(w, "Zone not found", http.StatusNotFound)
-				return
-			}
-			json.NewEncoder(w).Encode(zone)
-		} else {
-			var zones []models.Zone
-			database.DB.Preload("Channels", func(db *gorm.DB) *gorm.DB {
-				return db.Joins("JOIN zone_channels ON zone_channels.channel_id = channels.id").
-					Order("zone_channels.sort_order ASC")
-			}).Find(&zones)
-			json.NewEncoder(w).Encode(zones)
-		}
-	} else if r.Method == "POST" {
+	switch r.Method {
+	case "GET":
+		var zones []models.Zone
+		// Preload channels to display count or list?
+		// For list view, we might not need all channels. But ZoneEditor needs them.
+		database.DB.Preload("Channels").Find(&zones)
+		json.NewEncoder(w).Encode(zones)
+	case "POST":
 		var z models.Zone
 		if err := json.NewDecoder(r.Body).Decode(&z); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+
 		if z.ID == 0 {
 			database.DB.Create(&z)
 		} else {
-			database.DB.Save(&z)
+			// Update Name only? Or channels too?
+			// GORM handling of associations can be tricky on simple Save.
+			// Best to save Zone core data first.
+			if err := database.DB.Model(&z).Where("id = ?", z.ID).Update("name", z.Name).Error; err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 		}
 		json.NewEncoder(w).Encode(z)
-	} else if r.Method == "DELETE" {
+	case "DELETE":
 		id := r.URL.Query().Get("id")
 		if id != "" {
+			// Clear association
+			database.DB.Exec("DELETE FROM zone_channels WHERE zone_id = ?", id)
 			database.DB.Delete(&models.Zone{}, id)
 			w.WriteHeader(http.StatusOK)
 		}
@@ -1091,44 +1192,175 @@ func handleZoneAssignment(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+
 	id := r.URL.Query().Get("id")
 	if id == "" {
 		http.Error(w, "Zone ID required", http.StatusBadRequest)
 		return
 	}
 
-	var channelIDs []uint
+	var channelIDs []int
 	if err := json.NewDecoder(r.Body).Decode(&channelIDs); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	// Transaction to replace associations with order
-	err := database.DB.Transaction(func(tx *gorm.DB) error {
-		var zone models.Zone
-		if err := tx.First(&zone, id).Error; err != nil {
-			return err
+	// Replace associations
+	var zone models.Zone
+	if err := database.DB.First(&zone, id).Error; err != nil {
+		http.Error(w, "Zone not found", http.StatusNotFound)
+		return
+	}
+
+	// Find Channels
+	var channels []models.Channel
+	if len(channelIDs) > 0 {
+		database.DB.Find(&channels, channelIDs)
+	}
+
+	// Sort channels in the order of IDs passed?
+	// GORM Replace() doesn't guarantee order in the join table unless we manage a separate "order" column in the join table.
+	// For now, simple replace. User might lose custom sort order if relies on insertion order without an order column.
+	// NOTE: If order matters, we need a setup that respects it.
+	// In GORM many2many, order is not guaranteed.
+	// Fixing this properly requires a custom Join Model (ZoneChannel) with an Order field.
+	// For this prototype, we'll assume insertion order *might* hold or we don't care yet.
+
+	// To respect order: Clear old, then Append one by one?
+	database.DB.Model(&zone).Association("Channels").Clear()
+
+	// Re-fetch channels in correct order from input list to ensure append order
+	sortedChannels := make([]models.Channel, 0, len(channels))
+	chanMap := make(map[int]models.Channel)
+	for _, c := range channels {
+		chanMap[int(c.ID)] = c
+	}
+	for _, id := range channelIDs {
+		if c, ok := chanMap[id]; ok {
+			sortedChannels = append(sortedChannels, c)
 		}
+	}
 
-		// Clear existing
-		tx.Model(&zone).Association("Channels").Clear()
+	if len(sortedChannels) > 0 {
+		database.DB.Model(&zone).Association("Channels").Append(sortedChannels)
+	}
 
-		// Add with Order
-		// We insert manually into zone_channels to set sort_order
-		for i, chID := range channelIDs {
-			if err := tx.Create(&models.ZoneChannel{
-				ZoneID:    zone.ID,
-				ChannelID: chID,
-				SortOrder: i, // 0-indexed order
-			}).Error; err != nil {
-				return err
+	w.WriteHeader(http.StatusOK)
+}
+
+func handleWebSocket(w http.ResponseWriter, r *http.Request) {
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	hub.register <- conn
+
+	defer func() {
+		hub.unregister <- conn
+		conn.Close()
+	}()
+
+	for {
+		_, _, err := conn.ReadMessage()
+		if err != nil {
+			break
+		}
+	}
+}
+
+// Helpers
+
+func resolveContacts(channels []models.Channel) {
+	// Cache existing contacts
+	contactMap := make(map[string]int)
+	var contacts []models.Contact
+	database.DB.Find(&contacts)
+	for _, c := range contacts {
+		contactMap[strings.ToUpper(c.Name)] = int(c.ID)
+	}
+
+	for i := range channels {
+		// Try to match TxContact string to a Contact
+		if channels[i].TxContact != "" {
+			nameUpper := strings.ToUpper(channels[i].TxContact)
+			if id, ok := contactMap[nameUpper]; ok {
+				uid := uint(id)
+				channels[i].ContactID = &uid
+			} else {
+				// Auto-create?
+				newContact := models.Contact{
+					Name: channels[i].TxContact,
+					Type: models.ContactTypeGroup, // Default to Group
+				}
+				if result := database.DB.Create(&newContact); result.Error == nil {
+					uid := newContact.ID
+					channels[i].ContactID = &uid
+					contactMap[nameUpper] = int(newContact.ID)
+				}
 			}
 		}
-		return nil
-	})
+	}
+}
 
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Error assigning channels: %v", err), http.StatusInternalServerError)
+func handleScanLists(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "GET":
+		var lists []models.ScanList
+		database.DB.Preload("Channels").Find(&lists)
+		json.NewEncoder(w).Encode(lists)
+	case "POST":
+		var list models.ScanList
+		if err := json.NewDecoder(r.Body).Decode(&list); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if list.ID == 0 {
+			database.DB.Create(&list)
+		} else {
+			// Update name only, relationships handled via assign
+			database.DB.Model(&list).Update("name", list.Name)
+		}
+		json.NewEncoder(w).Encode(list)
+	case "DELETE":
+		id := r.URL.Query().Get("id")
+		if id != "" {
+			// Clean up join table
+			database.DB.Exec("DELETE FROM scan_list_channels WHERE scan_list_id = ?", id)
+			database.DB.Delete(&models.ScanList{}, id)
+			w.WriteHeader(http.StatusOK)
+		}
+	}
+}
+
+func handleScanListAssignment(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		ScanListID int   `json:"scan_list_id"`
+		ChannelIDs []int `json:"channel_ids"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var list models.ScanList
+	if err := database.DB.First(&list, req.ScanListID).Error; err != nil {
+		http.Error(w, "Scan List not found", http.StatusNotFound)
+		return
+	}
+
+	// Replace channels
+	var channels []models.Channel
+	database.DB.Find(&channels, req.ChannelIDs)
+
+	if err := database.DB.Model(&list).Association("Channels").Replace(&channels); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 

@@ -61,11 +61,12 @@ func ImportChirpCSV(r io.Reader) ([]models.Channel, error) {
 
 		fmt.Printf("Debug: Name=%s Duplex=%s Offset=%s OffsetVal=%f\n", channel.Name, duplex, offsetStr, offset)
 
-		if duplex == "+" {
+		switch duplex {
+		case "+":
 			channel.TxFrequency = channel.RxFrequency + offset
-		} else if duplex == "-" {
+		case "-":
 			channel.TxFrequency = channel.RxFrequency - offset
-		} else {
+		default:
 			channel.TxFrequency = channel.RxFrequency // Simplex or "off"
 		}
 
@@ -76,11 +77,12 @@ func ImportChirpCSV(r io.Reader) ([]models.Channel, error) {
 
 		// Tone mapping
 		toneMode := getVal("Tone") // "Tone", "TSQL", "DTCS", "Cross"
-		if toneMode == "Tone" {
+		switch toneMode {
+		case "Tone":
 			channel.Tone = getVal("rToneFreq")
-		} else if toneMode == "TSQL" {
+		case "TSQL":
 			channel.Tone = getVal("cToneFreq")
-		} else if toneMode == "DTCS" {
+		case "DTCS":
 			channel.Tone = getVal("DtcsCode")
 		}
 

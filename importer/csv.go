@@ -79,11 +79,12 @@ func ImportChannelsCSV(r io.Reader) ([]models.Channel, error) {
 			offsetStr := getVal("Offset")
 			if duplex != "" && offsetStr != "" {
 				offset, _ := strconv.ParseFloat(offsetStr, 64)
-				if duplex == "+" {
+				switch duplex {
+				case "+":
 					channel.TxFrequency = channel.RxFrequency + offset
-				} else if duplex == "-" {
+				case "-":
 					channel.TxFrequency = channel.RxFrequency - offset
-				} else {
+				default:
 					channel.TxFrequency = channel.RxFrequency
 				}
 			} else {
@@ -96,9 +97,13 @@ func ImportChannelsCSV(r io.Reader) ([]models.Channel, error) {
 			channel.Mode = getVal("Mode")
 		}
 		// Normalize Mode
-		if channel.Mode == "Digital" {
+		// Normalize Mode
+		switch channel.Mode {
+		case "", "Analog":
+			channel.Mode = "FM"
+		case "Digital":
 			channel.Mode = "DMR"
-		} else if channel.Mode == "NFM" {
+		case "NFM":
 			channel.Mode = "FM"
 		}
 
@@ -111,9 +116,10 @@ func ImportChannelsCSV(r io.Reader) ([]models.Channel, error) {
 				channel.ColorCode, _ = strconv.Atoi(ccStr)
 			}
 			tsStr := getVal("RX TS") // "Slot 1" or "Slot 2"
-			if tsStr == "Slot 1" {
+			switch tsStr {
+			case "Slot 1":
 				channel.TimeSlot = 1
-			} else if tsStr == "Slot 2" {
+			case "Slot 2":
 				channel.TimeSlot = 2
 			}
 
@@ -140,17 +146,18 @@ func ImportChannelsCSV(r io.Reader) ([]models.Channel, error) {
 		toneMode := getVal("Tone")
 		if toneMode != "" {
 			channel.SquelchType = toneMode // Tone, TSQL, DTCS, Cross
-			if toneMode == "Tone" {
+			switch toneMode {
+			case "Tone":
 				channel.TxTone = getVal("rToneFreq") // In Chirp, rToneFreq is the TX Tone for "Tone" mode
-			} else if toneMode == "TSQL" {
+			case "TSQL":
 				channel.TxTone = getVal("cToneFreq")
 				channel.RxTone = getVal("cToneFreq")
-			} else if toneMode == "DTCS" {
+			case "DTCS":
 				channel.SquelchType = "DCS"
 				channel.TxDCS = getVal("DtcsCode")
 				channel.RxDCS = getVal("DtcsCode")
 				// Chirp has DtcsPolarity "NN", "RN", etc. to distinguish invert. Ignoring for now.
-			} else if toneMode == "Cross" {
+			case "Cross":
 				// Cross mode is complex in Chirp. Mapping simplified version.
 				// "Cross" mode in Chirp uses CrossMode field to define:
 				// "Tone->Tone", "DTCS->", "->DTCS", "Tone->DTCS", etc.
