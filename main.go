@@ -927,7 +927,8 @@ func handleExport(w http.ResponseWriter, r *http.Request) {
 		format = radio
 	}
 
-	if format == "db" {
+	switch format {
+	case "db":
 		// Database Backup
 		// Flush WAL before creating file?
 		// We can just serve the file. SQLite handles read while open usually.
@@ -938,9 +939,8 @@ func handleExport(w http.ResponseWriter, r *http.Request) {
 
 		http.ServeFile(w, r, filename)
 		return
-	}
 
-	if format == "dm32uv" || format == "at890" {
+	case "dm32uv", "at890":
 		// Export as Zip
 		w.Header().Set("Content-Type", "application/zip")
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"codeplug_%s.zip\"", format))
@@ -948,7 +948,8 @@ func handleExport(w http.ResponseWriter, r *http.Request) {
 		zipWriter := zip.NewWriter(w)
 		defer zipWriter.Close()
 
-		if format == "dm32uv" {
+		switch format {
+		case "dm32uv":
 			// DM32UV Export to Zip
 			// 1. Channels
 			var channels []models.Channel
@@ -987,7 +988,7 @@ func handleExport(w http.ResponseWriter, r *http.Request) {
 			f, _ = zipWriter.Create("digital_contacts.csv")
 			exporter.ExportDM32UVDigitalContacts(digitalContacts, f)
 
-		} else if format == "at890" {
+		case "at890":
 			// AnyTone 890 Export
 			tempDir, err := os.MkdirTemp("", "at890_export_*")
 			if err != nil {
