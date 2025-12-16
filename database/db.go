@@ -28,7 +28,7 @@ func Connect(dbPath string) {
 	DB.SetupJoinTable(&models.ScanList{}, "Channels", &models.ScanListChannel{})
 
 	// Auto Migrate
-	err = DB.AutoMigrate(&models.Channel{}, &models.Contact{}, &models.Zone{}, &models.DigitalContact{}, &models.ZoneChannel{}, &models.ScanList{}, &models.ScanListChannel{})
+	err = DB.AutoMigrate(&models.Channel{}, &models.Contact{}, &models.Zone{}, &models.DigitalContact{}, &models.ZoneChannel{}, &models.ScanList{}, &models.ScanListChannel{}, &models.ContactList{}, &models.ContactListEntry{})
 	if err != nil {
 		log.Fatal("Failed to migrate database:", err)
 	}

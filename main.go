@@ -125,10 +125,101 @@ func main() {
 	radio := flag.String("radio", "db25d", "Unknown/Target radio profile: db25d, dm32uv, at890")
 	filterList := flag.String("filter-list", "", "Path to CSV/Text file containing allowed DMR IDs for contact export")
 	limit := flag.Int("limit", 0, "Limit number of contacts exported (0 = no limit, or default for radio)")
+	fixBandwidth := flag.Bool("fix-bandwidth", false, "Update channel bandwidths to defaults (12.5 for Digital, 25 for Analog)")
+
+	// Filter List Management Flags
+	importList := flag.String("import-list", "", "Path to filter list CSV to import (overwrites existing list)")
+	listName := flag.String("list-name", "", "Name for the filter list (required if importing list or viewing specific list)")
+	viewList := flag.String("view-list", "", "View filter list stats (use 'all' for summary, or specify name)")
+	useList := flag.String("use-list", "", "Filter export using this named list from the database")
 
 	flag.Parse()
 
 	database.Connect(*dbPath)
+
+	if *fixBandwidth {
+		fmt.Println("Fixing channel bandwidths...")
+		var channels []models.Channel
+		database.DB.Find(&channels)
+
+		count := 0
+		for _, ch := range channels {
+			updated := false
+			if ch.Type == models.ChannelTypeAnalog && ch.Bandwidth != "25" {
+				ch.Bandwidth = "25"
+				updated = true
+			} else if (ch.Type == models.ChannelTypeDigital || ch.Type == models.ChannelTypeMixed) && ch.Bandwidth != "12.5" {
+				// Naive assumption: Mixed/Digital default to 12.5, though Mixed might warrant 25 depending on user pref.
+				// User request said "Digital default 12.5", "Analog 25".
+				// Let's stick to strict interpretation: Digital -> 12.5.
+				// What about Mixed? Assuming 12.5 for now as it often implies DMR focus, but radio dependent.
+				// Let's just do Digital types for now to be safe, or include Mixed if user implies it.
+				// Request says "Bandwidth is 12.5 for digital by default. Analog will be 25".
+				// I'll assume "Digital" means non-Analog.
+				ch.Bandwidth = "12.5"
+				updated = true
+			}
+
+			if updated {
+				if err := database.DB.Save(&ch).Error; err != nil {
+					log.Printf("Failed to update channel %s: %v", ch.Name, err)
+				} else {
+					count++
+				}
+			}
+		}
+		fmt.Printf("Updated %d channels.\n", count)
+		return
+	}
+
+	// 1. Handle List Import
+	if *importList != "" {
+		if *listName == "" {
+			log.Fatal("Error: --list-name is required when importing a list.")
+		}
+		fmt.Printf("Importing filter list from %s into list '%s'...\n", *importList, *listName)
+		if err := importer.ImportFilterListToDB(database.DB, *importList, *listName); err != nil {
+			log.Fatalf("Error importing list: %v", err)
+		}
+		return
+	}
+
+	// 2. Handle View List
+	if *viewList != "" {
+		if *viewList == "all" {
+			var lists []models.ContactList
+			database.DB.Find(&lists)
+			fmt.Println("Available Filter Lists:")
+			for _, l := range lists {
+				var count int64
+				database.DB.Model(&models.ContactListEntry{}).Where("contact_list_id = ?", l.ID).Count(&count)
+				fmt.Printf(" - %s: %d entries (%s)\n", l.Name, count, l.Description)
+			}
+		} else {
+			// View specific list (either from --view-list arg if not "all"?? logic says viewList IS the arg)
+			// But --view-list might be bool or string? It is string.
+			// So usage: --view-list all OR --view-list MyList
+			target := *viewList
+			var list models.ContactList
+			if err := database.DB.Where("name = ?", target).First(&list).Error; err != nil {
+				log.Fatalf("List '%s' not found.", target)
+			}
+			var count int64
+			database.DB.Model(&models.ContactListEntry{}).Where("contact_list_id = ?", list.ID).Count(&count)
+			fmt.Printf("List: %s\nDescription: %s\nTotal Entries: %d\n", list.Name, list.Description, count)
+
+			// Show first 10
+			var entries []models.ContactListEntry
+			database.DB.Where("contact_list_id = ?", list.ID).Limit(10).Find(&entries)
+			if len(entries) > 0 {
+				fmt.Println("First 10 IDs:")
+				for _, e := range entries {
+					fmt.Printf(" - %d\n", e.DMRID)
+				}
+			}
+		}
+		return
+	}
 
 	// Start WebSocket Hub
 	go hub.run()
@@ -222,15 +313,28 @@ func main() {
 		defer f.Close()
 
 		fmt.Printf("Importing from %s...\n", *importFile)
-		channels, err = importer.ImportChannelsCSV(f)
-		// Fallback to Chirp if Generic failed or returned empty
-		if err != nil || len(channels) == 0 {
-			_, seekErr := f.Seek(0, 0)
-			if seekErr == nil {
-				chirpChannels, chirpErr := importer.ImportChirpCSV(f)
-				if chirpErr == nil && len(chirpChannels) > 0 {
-					channels = chirpChannels
-					err = nil
+
+		// Detect Format
+		// Read first chunk to check headers
+		headerBuf := make([]byte, 1024)
+		n, _ := f.Read(headerBuf)
+		headerStr := string(headerBuf[:n])
+		f.Seek(0, 0) // Reset
+
+		if strings.Contains(headerStr, "Location") && strings.Contains(headerStr, "CrossMode") {
+			fmt.Println("Detected Chirp CSV format.")
+			channels, err = importer.ImportChirpCSV(f)
+		} else {
+			channels, err = importer.ImportChannelsCSV(f)
+			// Fallback to Chirp if Generic failed or returned empty and it wasn't detected above
+			if err != nil || len(channels) == 0 {
+				_, seekErr := f.Seek(0, 0)
+				if seekErr == nil {
+					chirpChannels, chirpErr := importer.ImportChirpCSV(f)
+					if chirpErr == nil && len(chirpChannels) > 0 {
+						channels = chirpChannels
+						err = nil
+					}
 				}
 			}
 		}
@@ -350,6 +454,17 @@ func main() {
 
 			// 4. Export Digital Contacts (CSV Contacts)
 			// Filter logic
+			var filterListID uint
+			if *useList != "" {
+				var list models.ContactList
+				if err := database.DB.Where("name = ?", *useList).First(&list).Error; err == nil {
+					filterListID = list.ID
+					fmt.Printf("Filtering contacts using list '%s'...\n", *useList)
+				} else {
+					log.Printf("Warning: Filter list '%s' not found.", *useList)
+				}
+			}
+
 			var allowedIDs map[int]bool
 			if *filterList != "" {
 				var err error
@@ -366,7 +481,21 @@ func main() {
 			// Ideally we fetch all and filter in memory if not too huge, or use WHERE IN (chunked).
 			// Given simple implementation: fetch all is dangerous if huge?
 			// But for now, let's fetch all. DB is local.
-			database.DB.Find(&digitalContacts)
+
+			queryDC := database.DB.Model(&models.DigitalContact{})
+
+			// Filter by DB List if requested
+			if filterListID > 0 {
+				queryDC = queryDC.Where("dmr_id IN (?)", database.DB.Model(&models.ContactListEntry{}).Select("dmr_id").Where("contact_list_id = ?", filterListID))
+			} else if *useList != "" {
+				// Fallback if ID wasn't found but name was provided? We already logged warning above.
+			}
+
+			// Apply in-memory filtering for File-based list (legacy or mixed usage)
+			// If both --filter-list (file) and --use-list (db) are used, we chain them.
+			// But here we'll just fetch results and then apply file filter if present.
+
+			queryDC.Find(&digitalContacts)
 
 			filteredContacts := []models.DigitalContact{}
 			for _, c := range digitalContacts {
@@ -403,8 +532,20 @@ func main() {
 		} else if *radio == "at890" {
 			// AnyTone 890 Export Logic
 			fmt.Printf("Exporting AnyTone 890 to directory %s...\n", *exportFile)
-			if err := exporter.ExportAnyTone890(database.DB, *exportFile); err != nil {
-				log.Fatalf("Error exporting to AnyTone 890: %v", err)
+
+			var filterListID uint
+			if *useList != "" {
+				var list models.ContactList
+				if err := database.DB.Where("name = ?", *useList).First(&list).Error; err == nil {
+					filterListID = list.ID
+					fmt.Printf("Filtering contacts using list '%s'...\n", *useList)
+				} else {
+					log.Printf("Warning: Filter list '%s' not found.", *useList)
+				}
+			}
+
+			if err := exporter.ExportAnyTone890(database.DB, *exportFile, filterListID); err != nil {
+				log.Fatalf("Error exporting 890: %v", err)
 			}
 			fmt.Println("Export complete.")
 			return
@@ -460,7 +601,9 @@ func startServer(port string) {
 	http.HandleFunc("/api/zones", handleZones)
 	http.HandleFunc("/api/zones/assign", handleZoneAssignment)
 	http.HandleFunc("/api/scanlists", handleScanLists)
+
 	http.HandleFunc("/api/scanlists/assign", handleScanListAssignment)
+	http.HandleFunc("/api/filter_lists", handleFilterLists)
 	http.HandleFunc("/api/ws", handleWebSocket)
 
 	// Static Files
@@ -715,6 +858,7 @@ func handleImport(w http.ResponseWriter, r *http.Request) {
 
 	if format == "radioid" {
 		// Digital Contact Import
+		sourceMode := r.FormValue("source_mode")
 
 		// Overwrite?
 		overwrite := r.FormValue("overwrite") == "true"
@@ -737,8 +881,22 @@ func handleImport(w http.ResponseWriter, r *http.Request) {
 
 		var reader io.Reader
 
+		// Initialize Progress
+		currentProgress.mu.Lock()
+		currentProgress.Total = 0
+		currentProgress.Processed = 0
+		currentProgress.Status = "running"
+		currentProgress.Message = "Initializing..."
+		currentProgress.mu.Unlock()
+		broadcastProgress()
+
 		if sourceMode == "download" {
 			// Download from RadioID.net
+			currentProgress.mu.Lock()
+			currentProgress.Message = "Downloading contacts from RadioID.net..."
+			currentProgress.mu.Unlock()
+			broadcastProgress()
+
 			fmt.Println("Downloading contacts from RadioID.net...")
 			resp, err := http.Get("https://database.radioid.net/static/user.csv")
 			if err != nil {
@@ -753,6 +911,11 @@ func handleImport(w http.ResponseWriter, r *http.Request) {
 			defer fileRef.Close()
 			reader = fileRef
 		}
+
+		currentProgress.mu.Lock()
+		currentProgress.Message = "Parsing CSV data..."
+		currentProgress.mu.Unlock()
+		broadcastProgress()
 
 		contacts, err := importer.ImportRadioIDCSV(reader, activeIDs)
 		if err != nil {
@@ -832,6 +995,26 @@ func handleImport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if format == "filter_list" {
+		listName := r.FormValue("list_name")
+		if listName == "" {
+			http.Error(w, "List name is required", http.StatusBadRequest)
+			return
+		}
+
+		// path is already set to temp file
+		if err := importer.ImportFilterListToDB(database.DB, path, listName); err != nil {
+			http.Error(w, fmt.Sprintf("Error importing filter list: %v", err), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"message": fmt.Sprintf("Successfully imported filter list '%s'", listName),
+		})
+		return
+	}
+
 	// Normal Channel Import
 	if path == "" {
 		http.Error(w, "File is required for generic import", http.StatusBadRequest)
@@ -841,8 +1024,10 @@ func handleImport(w http.ResponseWriter, r *http.Request) {
 	// Handle Overwrite
 	overwrite := r.FormValue("overwrite") == "true"
 	if overwrite {
-		// Clear Channels table
-		database.DB.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&models.Channel{})
+		// Clear Channels table (Hard Delete to allow ID reset)
+		database.DB.Session(&gorm.Session{AllowGlobalUpdate: true}).Unscoped().Delete(&models.Channel{})
+		// Reset Sequence (SQLite specific)
+		database.DB.Exec("DELETE FROM sqlite_sequence WHERE name = 'channels'")
 	}
 
 	var channels []models.Channel
@@ -855,13 +1040,24 @@ func handleImport(w http.ResponseWriter, r *http.Request) {
 	}
 	defer f.Close()
 
-	channels, err = importer.ImportChannelsCSV(f)
-	if err != nil || len(channels) == 0 {
-		f.Seek(0, 0)
-		chirpChannels, chirpErr := importer.ImportChirpCSV(f)
-		if chirpErr == nil && len(chirpChannels) > 0 {
-			channels = chirpChannels
-			err = nil
+	// Detect Format
+	// Read first chunk to check headers
+	headerBuf := make([]byte, 1024)
+	n, _ := f.Read(headerBuf)
+	headerStr := string(headerBuf[:n])
+	f.Seek(0, 0) // Reset
+
+	if strings.Contains(headerStr, "Location") && strings.Contains(headerStr, "CrossMode") {
+		channels, err = importer.ImportChirpCSV(f)
+	} else {
+		channels, err = importer.ImportChannelsCSV(f)
+		if err != nil || len(channels) == 0 {
+			f.Seek(0, 0)
+			chirpChannels, chirpErr := importer.ImportChirpCSV(f)
+			if chirpErr == nil && len(chirpChannels) > 0 {
+				channels = chirpChannels
+				err = nil
+			}
 		}
 	}
 
@@ -921,9 +1117,20 @@ func handleExport(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// If explicit radio param is used, it overrides format for now, or aliases it.
-	// We'll normalize to `format` being the driver.
-	if format == "" && radio != "" {
+	// Resolve Filter List ID if provided
+	var filterListID uint
+	useList := r.URL.Query().Get("use_list")
+	// Also check for legacy filter_list param if we want backward compat or just stick to use_list
+	if useList != "" {
+		var list models.ContactList
+		if err := database.DB.Where("name = ?", useList).First(&list).Error; err == nil {
+			filterListID = list.ID
+		} else {
+			fmt.Printf("Warning: Filter list '%s' not found.\n", useList)
+		}
+	}
+
+	if (format == "" || format == "zip") && radio != "" {
 		format = radio
 	}
 
@@ -982,9 +1189,17 @@ func handleExport(w http.ResponseWriter, r *http.Request) {
 			f, _ = zipWriter.Create("talkgroups.csv")
 			exporter.ExportDM32UVTalkgroups(talkgroups, f)
 
-			// 4. Digital Contacts (All - filtered by limit?)
+			// 4. Digital Contacts (Filtered)
 			var digitalContacts []models.DigitalContact
-			database.DB.Limit(50000).Find(&digitalContacts)
+			query := database.DB.Model(&models.DigitalContact{})
+
+			if filterListID > 0 {
+				query = query.Where("dmr_id IN (?)", database.DB.Model(&models.ContactListEntry{}).Select("dmr_id").Where("contact_list_id = ?", filterListID))
+			} else {
+				query = query.Limit(50000)
+			}
+
+			query.Find(&digitalContacts)
 			f, _ = zipWriter.Create("digital_contacts.csv")
 			exporter.ExportDM32UVDigitalContacts(digitalContacts, f)
 
@@ -997,8 +1212,8 @@ func handleExport(w http.ResponseWriter, r *http.Request) {
 			}
 			defer os.RemoveAll(tempDir) // Clean up
 
-			// For now, exports everything.
-			if err := exporter.ExportAnyTone890(database.DB, tempDir); err != nil {
+			// Pass filterListID
+			if err := exporter.ExportAnyTone890(database.DB, tempDir, filterListID); err != nil {
 				http.Error(w, "Failed to export 890", http.StatusInternalServerError)
 				return
 			}
@@ -1153,9 +1368,25 @@ func handleContacts(w http.ResponseWriter, r *http.Request) {
 func handleZones(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
+		id := r.URL.Query().Get("id")
+		if id != "" {
+			var zone models.Zone
+			if err := database.DB.Preload("Channels").First(&zone, id).Error; err != nil {
+				http.Error(w, "Zone not found", http.StatusNotFound)
+				return
+			}
+			// Just to be safe with the test expectation of ordering which seemed to rely on insertion order in the join table
+			// effectively being preserved if no specific sort is applied, but Preload might do its own thing.
+			// The test expects: c3, c1, c2
+			// Use a join to ensure we get them via the join table order?
+			// GORM Preload usually does 2 queries.
+			// If we want order, we might need a custom Preload or Join.
+			// But let's first fix the single vs list return.
+			json.NewEncoder(w).Encode(zone)
+			return
+		}
+
 		var zones []models.Zone
-		// Preload channels to display count or list?
-		// For list view, we might not need all channels. But ZoneEditor needs them.
 		database.DB.Preload("Channels").Find(&zones)
 		json.NewEncoder(w).Encode(zones)
 	case "POST":
@@ -1366,4 +1597,91 @@ func handleScanListAssignment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func handleFilterLists(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		id := r.URL.Query().Get("id")
+
+		if id != "" {
+			// Get details and entries for a specific list
+			var list models.ContactList
+			if err := database.DB.First(&list, id).Error; err != nil {
+				http.Error(w, "List not found", http.StatusNotFound)
+				return
+			}
+
+			if r.URL.Query().Get("mode") == "ids" {
+				var ids []int
+				database.DB.Model(&models.ContactListEntry{}).Where("contact_list_id = ?", list.ID).Pluck("dmr_id", &ids)
+				json.NewEncoder(w).Encode(ids)
+				return
+			}
+
+			// Pagination / Search for entries
+			page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+			if page < 1 {
+				page = 1
+			}
+			limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+			if limit < 1 {
+				limit = 100
+			}
+			offset := (page - 1) * limit
+			search := r.URL.Query().Get("search")
+
+			query := database.DB.Model(&models.ContactListEntry{}).Where("contact_list_id = ?", list.ID)
+
+			if search != "" {
+				query = query.Where("CAST(dmr_id AS TEXT) LIKE ?", "%"+search+"%")
+			}
+
+			var total int64
+			query.Count(&total)
+
+			var entries []models.ContactListEntry
+			query.Limit(limit).Offset(offset).Find(&entries)
+
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"list":    list,
+				"entries": entries,
+				"meta": map[string]interface{}{
+					"total": total,
+					"page":  page,
+					"limit": limit,
+				},
+			})
+			return
+		}
+
+		// List all lists with counts
+		var lists []models.ContactList
+		database.DB.Find(&lists)
+
+		type ListSummary struct {
+			ID          uint   `json:"ID"`
+			Name        string `json:"Name"`
+			Description string `json:"Description"`
+			Count       int64  `json:"Count"`
+		}
+
+		var summaries []ListSummary
+		for _, l := range lists {
+			var count int64
+			database.DB.Model(&models.ContactListEntry{}).Where("contact_list_id = ?", l.ID).Count(&count)
+			summaries = append(summaries, ListSummary{
+				ID:          l.ID,
+				Name:        l.Name,
+				Description: l.Description,
+				Count:       count,
+			})
+		}
+		json.NewEncoder(w).Encode(summaries)
+	} else if r.Method == "DELETE" {
+		id := r.URL.Query().Get("id")
+		if id != "" {
+			database.DB.Delete(&models.ContactList{}, id) // Cascade should handle entries
+			w.WriteHeader(http.StatusOK)
+		}
+	}
 }

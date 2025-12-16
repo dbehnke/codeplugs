@@ -9,9 +9,10 @@ const showModal = ref(false)
 const modalChannel = ref<Channel | null>(null)
 
 onMounted(() => {
-  store.fetchChannels()
-  store.fetchTalkgroups() // Needed for contact dropdown
-})
+    store.fetchChannels()
+    store.fetchTalkgroups() // Needed for contact dropdown
+    store.fetchScanLists() // Needed for scan list dropdown
+  })
 
 const filteredChannels = computed(() => {
   return store.channels.filter(ch => 
@@ -102,6 +103,19 @@ const navigateChannel = (direction: number) => {
     }
 }
 
+// Watch for Type changes to set default Bandwidth
+import { watch } from 'vue'
+watch(() => modalChannel.value?.Type, (newType) => {
+    if (!modalChannel.value) return
+    // Only apply default if the user hasn't explicitly set a non-default (optional enhancement, but for now simple overwrite is safer for consistency)
+    // Or just overwrite on change.
+    if (newType === 'Analog') {
+        modalChannel.value.Bandwidth = '25'
+    } else if (newType?.includes('Digital')) {
+        modalChannel.value.Bandwidth = '12.5'
+    }
+})
+
 // Inline input helpers
 const updateRxFreq = (ch: Channel, val: string) => {
     ch.RxFrequency = parseFloat(parseFloat(val).toFixed(4))
@@ -110,7 +124,7 @@ const updateTxFreq = (ch: Channel, val: string) => {
     ch.TxFrequency = parseFloat(parseFloat(val).toFixed(4))
 }
 
-const channelTypes = ['Analog', 'Digital (DMR)', 'Digital (NXDN)']
+const channelTypes = ['Analog', 'Digital (DMR)', 'Digital (NXDN)', 'Digital (YSF)', 'Digital (D-Star)', 'Digital (P25)']
 const powerLevels = ['High', 'Mid', 'Low', 'Turbo']
 const bandwidths = ['12.5', '25']
 const squelchTypes = ['None', 'Tone', 'TSQL', 'DCS']
@@ -290,7 +304,10 @@ const squelchTypes = ['None', 'Tone', 'TSQL', 'DCS']
                 </div>
                  <div>
                      <label class="block text-xs font-medium text-slate-400 mb-1">Scan List</label>
-                     <input v-model="modalChannel.ScanList" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-indigo-500/50 focus:outline-none" />
+                     <select v-model="modalChannel.ScanList" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-indigo-500/50 focus:outline-none">
+                        <option value="None">None</option>
+                        <option v-for="sl in store.scanlists" :key="sl.ID" :value="sl.Name">{{ sl.Name }}</option>
+                    </select>
                 </div>
                 
                 <!-- Analog Specific -->

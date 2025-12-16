@@ -7,60 +7,115 @@ import (
 	"testing"
 )
 
-func TestExportChirpCSV_Filtering(t *testing.T) {
+func TestExportChirpCSV_GenericFormat(t *testing.T) {
 	channels := []models.Channel{
-		{Name: "Analog1", Mode: "FM", RxFrequency: 146.52},
-		{Name: "Digital1", Mode: "DMR", RxFrequency: 446.00},
-		{Name: "Analog2", Mode: "FM", RxFrequency: 145.50},
+		{
+			Name:        "HighTSQL",
+			Mode:        "FM",
+			RxFrequency: 146.52,
+			TxFrequency: 146.52,
+			Power:       "High",
+			SquelchType: "TSQL",
+			TxTone:      "100.0",
+		},
+		{
+			Name:        "MidTone",
+			Mode:        "FM",
+			RxFrequency: 145.50,
+			TxFrequency: 145.50,
+			Power:       "Mid",
+			SquelchType: "Tone",
+			TxTone:      "88.5",
+		},
+		{
+			Name:        "LowDTCS",
+			Mode:        "FM",
+			RxFrequency: 442.225,
+			TxFrequency: 447.225,
+			Power:       "Low",
+			SquelchType: "DCS",
+			TxDCS:       "023",
+			RxDCS:       "023",
+		},
+		{
+			Name:        "CrossCh",
+			Mode:        "FM",
+			RxFrequency: 443.55,
+			TxFrequency: 448.55,
+			Power:       "High",
+			SquelchType: "Cross",
+			TxTone:      "107.2",
+			RxTone:      "88.5",
+		},
 	}
-
-	// Mock Writer (needs refactoring of ExportChirpCSV)
-	// For TDD, we must call ExportChirpCSV.
-	// Currently it takes a filename string.
-	// To make this testable without FS, we need to refactor it to accept io.Writer.
-	// But the test is created BEFORE refactoring?
-	// If I call it with a filename, I have to read the file.
-	// Ideally I refactor the signature first?
-	// No, the task list says "Create tests... Refactor".
-	// I will write the test assuming `ExportChirpCSV` accepts `io.Writer`.
-	// This means the test will FAIL TO COMPILE initially.
-	// This effectively drives the refactor step.
 
 	buf := new(bytes.Buffer)
-
-	// Assuming future signature: func ExportChirpCSV(channels []models.Channel, w io.Writer) error
-	// Currently: func ExportChirpCSV(channels []models.Channel, filePath string) error
-
-	// I will comment out the call or make it fail if I can't change signature yet.
-	// Or I can use a temp file for now and then refactor the test later?
-	// Refactoring the test later is acceptable.
-	// But the plan says "Refactor Exporters to use io.Writer" is next.
-	// So let's write the test using io.Writer and accept that it won't compile until I fix the signature.
-
 	err := ExportChirpCSV(channels, buf)
 	if err != nil {
-		// This will likely error on compilation due to type mismatch (buf vs string)
-		// t.Fatalf("Export failed: %v", err)
+		t.Fatalf("Export failed: %v", err)
 	}
 
-	// Verify Output
 	reader := csv.NewReader(buf)
-	records, _ := reader.ReadAll()
-
-	// Expect Header + 2 Analog Rows
-	if len(records) != 3 {
-		t.Errorf("Expected 3 records (Header + 2 Analog), got %d", len(records))
+	records, err := reader.ReadAll()
+	if err != nil {
+		t.Fatalf("Read CSV failed: %v", err)
 	}
 
-	// Check content
-	foundDigital := false
-	for _, r := range records {
-		// Chirp Name is index 1
-		if r[1] == "Digital1" {
-			foundDigital = true
+	// Header + 4 channels
+	if len(records) != 5 {
+		t.Fatalf("Expected 5 records, got %d", len(records))
+	}
+
+	header := records[0]
+	// Verify critical new headers are present
+	headerMap := make(map[string]int)
+	for i, h := range header {
+		headerMap[h] = i
+	}
+
+	requiredCols := []string{"Power", "RxDtcsCode", "CrossMode"}
+	for _, col := range requiredCols {
+		if _, ok := headerMap[col]; !ok {
+			t.Errorf("Missing required header column: %s", col)
 		}
 	}
-	if foundDigital {
-		t.Error("Digital channel was not filtered out")
+
+	// Check HighTSQL
+	r1 := records[1]
+	if r1[headerMap["Name"]] != "HighTSQL" {
+		t.Errorf("R1 Name mismatch")
+	}
+	if r1[headerMap["Power"]] != "50W" {
+		t.Errorf("R1 Power mismatch: expected 50W, got %s", r1[headerMap["Power"]])
+	}
+	if r1[headerMap["Tone"]] != "TSQL" {
+		t.Errorf("R1 Tone Mode mismatch: expected TSQL, got %s", r1[headerMap["Tone"]])
+	}
+
+	// Check MidTone
+	r2 := records[2]
+	if r2[headerMap["Power"]] != "25W" {
+		t.Errorf("R2 Power mismatch: expected 25W, got %s", r2[headerMap["Power"]])
+	}
+
+	// Check LowDTCS
+	r3 := records[3]
+	if r3[headerMap["Power"]] != "5W" {
+		t.Errorf("R3 Power mismatch: expected 5W, got %s", r3[headerMap["Power"]])
+	}
+	if r3[headerMap["RxDtcsCode"]] != "023" {
+		t.Errorf("R3 RxDtcsCode mismatch: expected 023, got %s", r3[headerMap["RxDtcsCode"]])
+	}
+
+	// Check CrossCh
+	r4 := records[4]
+	if r4[headerMap["CrossMode"]] != "Tone->Tone" {
+		t.Errorf("R4 CrossMode mismatch: expected Tone->Tone, got %s", r4[headerMap["CrossMode"]])
+	}
+	if r4[headerMap["rToneFreq"]] != "107.2" {
+		t.Errorf("R4 TxTone mismatch: expected 107.2, got %s", r4[headerMap["rToneFreq"]])
+	}
+	if r4[headerMap["cToneFreq"]] != "88.5" {
+		t.Errorf("R4 RxTone mismatch: expected 88.5, got %s", r4[headerMap["cToneFreq"]])
 	}
 }

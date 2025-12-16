@@ -2,6 +2,7 @@ package importer
 
 import (
 	"encoding/csv"
+	"fmt"
 	"io"
 	"strconv"
 
@@ -87,27 +88,109 @@ func ImportChannelsCSV(r io.Reader) ([]models.Channel, error) {
 				default:
 					channel.TxFrequency = channel.RxFrequency
 				}
+				// Fix floating point precision issues (e.g. 147.79999999999998)
+				// Round to 6 decimal places standard in radio
+				channel.TxFrequency, _ = strconv.ParseFloat(fmt.Sprintf("%.6f", channel.TxFrequency), 64)
 			} else {
 				channel.TxFrequency = channel.RxFrequency
 			}
 		}
 
+		// Ensure RxFrequency is also rounded just in case
+		channel.RxFrequency, _ = strconv.ParseFloat(fmt.Sprintf("%.6f", channel.RxFrequency), 64)
+
 		channel.Mode = getVal("CH mode")
 		if channel.Mode == "" {
 			channel.Mode = getVal("Mode")
 		}
-		// Normalize Mode
-		// Normalize Mode
+		// Optimize Mode Mapping for Type/Protocol/Bandwidth
 		switch channel.Mode {
-		case "", "Analog":
+		case "", "Analog", "FM":
 			channel.Mode = "FM"
-		case "Digital":
-			channel.Mode = "DMR"
+			channel.Type = models.ChannelTypeAnalog
+			channel.Protocol = models.ProtocolFM
+			channel.Bandwidth = "25"
 		case "NFM":
-			channel.Mode = "FM"
+			channel.Mode = "FM" // Internal standardized mode
+			channel.Type = models.ChannelTypeAnalog
+			channel.Protocol = models.ProtocolFM
+			channel.Bandwidth = "12.5"
+		case "AM":
+			channel.Type = models.ChannelTypeAnalog
+			channel.Protocol = models.ProtocolAM
+			channel.Bandwidth = "25"
+			channel.Bandwidth = "25"
+		case "DMR":
+			channel.Mode = "DMR"
+			channel.Type = models.ChannelTypeDigitalDMR
+			channel.Protocol = models.ProtocolDMR
+			channel.Bandwidth = "12.5"
+		case "DN":
+			channel.Mode = "DN"
+			channel.Type = models.ChannelTypeDigitalYSF
+			channel.Protocol = models.ProtocolFusion
+			channel.Bandwidth = "12.5"
+		case "DV":
+			channel.Mode = "DV"
+			channel.Type = models.ChannelTypeDigitalDStar
+			channel.Protocol = models.ProtocolDStar
+			channel.Bandwidth = "12.5"
+		case "P25":
+			channel.Mode = "P25"
+			channel.Type = models.ChannelTypeDigitalP25
+			channel.Protocol = "P25"
+			channel.Bandwidth = "12.5"
+		case "Digital": // Generic Digital fallback logic
+			channel.Mode = "DMR" // Assume DMR logic for generic "Digital"
+			channel.Type = models.ChannelTypeDigitalDMR
+			channel.Protocol = models.ProtocolDMR
+			channel.Bandwidth = "12.5"
+		default:
+			// Fallback for unknown modes
+			channel.Type = models.ChannelTypeAnalog
+			channel.Protocol = models.ProtocolFM
+			channel.Bandwidth = "25"
 		}
 
-		channel.Bandwidth = getVal("Bandwidth")
+		// Explicit Bandwidth override if column exists
+		if bw := getVal("Bandwidth"); bw != "" {
+			channel.Bandwidth = bw
+		}
+
+		// Power Mapping
+		powerStr := getVal("Power")
+		if powerStr != "" {
+			// Try to parse wattage logic similar to Chirp
+			cleanPowerStr := powerStr
+			if len(powerStr) > 0 && (powerStr[len(powerStr)-1] == 'W' || powerStr[len(powerStr)-1] == 'w') {
+				cleanPowerStr = powerStr[:len(powerStr)-1]
+			}
+			if watts, err := strconv.ParseFloat(cleanPowerStr, 64); err == nil {
+				if watts > 25 {
+					channel.Power = "High"
+				} else if watts > 5 {
+					channel.Power = "Mid"
+				} else {
+					channel.Power = "Low"
+				}
+			} else {
+				// Direct match check
+				if powerStr == "High" || powerStr == "Mid" || powerStr == "Low" {
+					channel.Power = powerStr
+				} else {
+					// Default or leave as is? Model expects specific strings.
+					// If unknown string, maybe default to High or map loosely.
+					channel.Power = "High"
+				}
+			}
+		} else {
+			// Check legacy/other columns for Power if needed?
+			// For now, if missing, default validation might handle it or it stays empty (defaulting happening in UI/Export)
+			// But user wants it set.
+			if channel.Power == "" {
+				channel.Power = "High" // Default
+			}
+		}
 
 		// DMR specific
 		if channel.Mode == "DMR" {
@@ -178,6 +261,11 @@ func ImportChannelsCSV(r io.Reader) ([]models.Channel, error) {
 			channel.Tone = channel.TxTone
 		} else if channel.TxDCS != "" {
 			channel.Tone = channel.TxDCS
+		}
+
+		// Default SquelchType if missing
+		if channel.SquelchType == "" {
+			channel.SquelchType = "None"
 		}
 
 		channels = append(channels, channel)

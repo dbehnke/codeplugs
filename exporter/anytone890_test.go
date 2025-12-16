@@ -42,7 +42,7 @@ func TestExportAnyTone890(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	if err := ExportAnyTone890(db, tmpDir); err != nil {
+	if err = ExportAnyTone890(db, tmpDir, 0); err != nil {
 		t.Fatalf("ExportAnyTone890 failed: %v", err)
 	}
 

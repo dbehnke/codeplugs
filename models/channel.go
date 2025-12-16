@@ -79,9 +79,14 @@ type Channel struct {
 type ChannelType string
 
 const (
-	ChannelTypeAnalog  ChannelType = "Analog"
-	ChannelTypeDigital ChannelType = "Digital"
-	ChannelTypeMixed   ChannelType = "Mixed"
+	ChannelTypeAnalog       ChannelType = "Analog"
+	ChannelTypeDigital      ChannelType = "Digital" // Generic fallback
+	ChannelTypeDigitalDMR   ChannelType = "Digital (DMR)"
+	ChannelTypeDigitalYSF   ChannelType = "Digital (YSF)"
+	ChannelTypeDigitalDStar ChannelType = "Digital (D-Star)"
+	ChannelTypeDigitalNXDN  ChannelType = "Digital (NXDN)"
+	ChannelTypeDigitalP25   ChannelType = "Digital (P25)"
+	ChannelTypeMixed        ChannelType = "Mixed"
 )
 
 type Protocol string
@@ -92,6 +97,7 @@ const (
 	ProtocolFusion Protocol = "Fusion"
 	ProtocolDStar  Protocol = "D-Star"
 	ProtocolNXDN   Protocol = "NXDN"
+	ProtocolAM     Protocol = "AM"
 )
 
 func (c *Channel) HasValidType() bool {
@@ -100,7 +106,7 @@ func (c *Channel) HasValidType() bool {
 
 func (c *Channel) HasValidProtocol() bool {
 	switch c.Protocol {
-	case ProtocolFM, ProtocolDMR, ProtocolFusion, ProtocolDStar, ProtocolNXDN:
+	case ProtocolFM, ProtocolDMR, ProtocolFusion, ProtocolDStar, ProtocolNXDN, ProtocolAM:
 		return true
 	}
 	return false

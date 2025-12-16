@@ -7,6 +7,10 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"codeplugs/models"
+
+	"gorm.io/gorm"
 )
 
 // LoadFilterList loads a list of allowed DMR IDs from a file.
@@ -94,4 +98,65 @@ func LoadFilterList(path string) (map[int]bool, error) {
 	}
 
 	return allowed, nil
+}
+
+// ImportFilterListToDB loads a filter list from a file and saves it to the database.
+// It overwrites any existing list with the same name.
+func ImportFilterListToDB(db *gorm.DB, path string, listName string) error {
+	// reuse logic to get map of IDs
+	allowed, err := LoadFilterList(path)
+	if err != nil {
+		return err
+	}
+
+	if len(allowed) == 0 {
+		return fmt.Errorf("no IDs found in file %s", path)
+	}
+
+	return db.Transaction(func(tx *gorm.DB) error {
+		// 1. Find or Create List
+		var list models.ContactList
+		if err := tx.Where("name = ?", listName).First(&list).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				list = models.ContactList{Name: listName, Description: fmt.Sprintf("Imported from %s", path)}
+				if err := tx.Create(&list).Error; err != nil {
+					return err
+				}
+			} else {
+				return err
+			}
+		}
+
+		// 2. Clear existing entries (Overwrite mode)
+		if err := tx.Where("contact_list_id = ?", list.ID).Delete(&models.ContactListEntry{}).Error; err != nil {
+			return err
+		}
+
+		// 3. Batch Insert New Entries
+		batchSize := 1000
+		entries := make([]models.ContactListEntry, 0, batchSize)
+		count := 0
+		for id := range allowed {
+			entries = append(entries, models.ContactListEntry{
+				ContactListID: list.ID,
+				DMRID:         id,
+			})
+			count++
+
+			if len(entries) >= batchSize {
+				if err := tx.Create(&entries).Error; err != nil {
+					return err
+				}
+				entries = entries[:0]
+			}
+		}
+		if len(entries) > 0 {
+			if err := tx.Create(&entries).Error; err != nil {
+				return err
+			}
+		}
+
+		fmt.Printf("Imported %d entries into list '%s'.\n", count, listName)
+		return nil
+	})
 }

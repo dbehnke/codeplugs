@@ -13,7 +13,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func ExportAnyTone890(db *gorm.DB, outputDir string) error {
+func ExportAnyTone890(db *gorm.DB, outputDir string, filterListID uint) error {
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
 		return err
 	}
@@ -75,8 +75,22 @@ func ExportAnyTone890(db *gorm.DB, outputDir string) error {
 		return err
 	}
 	defer f4.Close()
+
+	// Digital Contacts Logic with Filter
 	var digitalContacts []models.DigitalContact
-	if err := db.Find(&digitalContacts).Error; err != nil {
+	query := db.Model(&models.DigitalContact{})
+
+	if filterListID > 0 {
+		// Apply subquery filter
+		query = query.Where("dmr_id IN (?)", db.Model(&models.ContactListEntry{}).Select("dmr_id").Where("contact_list_id = ?", filterListID))
+	} else {
+		// Default limit if no filter? Or full dump?
+		// AnyTone limit is high (500k in 878UVII/890).
+		// Let's cap at 200k or just find all
+		// query = query.Limit(200000)
+	}
+
+	if err := query.Find(&digitalContacts).Error; err != nil {
 		return err
 	}
 	if err := ExportAnyTone890DigitalContacts(digitalContacts, f4); err != nil {

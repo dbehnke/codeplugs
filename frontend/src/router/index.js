@@ -8,6 +8,7 @@ import DMRTalkgroupsView from '../views/DMRTalkgroupsView.vue'
 import DMRContactsView from '../views/DMRContactsView.vue'
 import NXDNTalkgroupsView from '../views/NXDNTalkgroupsView.vue'
 import NXDNContactsView from '../views/NXDNContactsView.vue'
+import FilterListsView from '../views/FilterListsView.vue'
 
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
@@ -50,6 +51,11 @@ const router = createRouter({
             path: '/nxdn-contacts',
             name: 'nxdn-contacts',
             component: NXDNContactsView
+        },
+        {
+            path: '/filter-lists',
+            name: 'filter-lists',
+            component: FilterListsView
         }
     ]
 })

@@ -6,8 +6,13 @@ const store = useCodeplugStore()
 
 const selectedZoneId = ref<number | null>(null)
 const selectedZone = ref<Zone | null>(null)
-const selectedAvailableChId = ref<number | null>(null)
-const selectedMemberIndex = ref<number | null>(null)
+
+// Multi-select state
+const selectedAvailableChIDs = ref(new Set<number>())
+const selectedMemberIndices = ref(new Set<number>())
+let lastSelectedAvailableIndex = -1
+let lastSelectedMemberIndex = -1
+
 const isCreating = ref(false)
 
 onMounted(async () => {
@@ -23,13 +28,20 @@ const selectZone = (z: Zone) => {
     // Deep clone to avoid mutating store directly until save
     selectedZone.value = JSON.parse(JSON.stringify(z))
     isCreating.value = false
-    selectedMemberIndex.value = null
+    selectedMemberIndices.value = new Set()
+    lastSelectedMemberIndex = -1
+    selectedAvailableChIDs.value = new Set()
+    lastSelectedAvailableIndex = -1
 }
 
 const createNewZone = () => {
     selectedZone.value = { ID: 0, Name: 'New Zone', Channels: [] }
     selectedZoneId.value = 0
     isCreating.value = true
+    selectedMemberIndices.value = new Set()
+    lastSelectedMemberIndex = -1
+    selectedAvailableChIDs.value = new Set()
+    lastSelectedAvailableIndex = -1
 }
 
 const availableChannels = computed(() => {
@@ -38,47 +50,123 @@ const availableChannels = computed(() => {
     return store.channels.filter(c => !memberIDs.has(c.ID))
 })
 
-// Actions
-const addToZone = () => {
-    if (selectedAvailableChId.value && selectedZone.value) {
-         // Prevent Adding duplicates
-        if (selectedZone.value.Channels.some(c => c.ID === selectedAvailableChId.value)) {
-            selectedAvailableChId.value = null
-            return
+// --- Selection Logic ---
+
+const selectAvailable = (ch: Channel, index: number, event: MouseEvent) => {
+    const newSet = new Set(selectedAvailableChIDs.value)
+
+    if (event.shiftKey && lastSelectedAvailableIndex !== -1) {
+        const start = Math.min(lastSelectedAvailableIndex, index)
+        const end = Math.max(lastSelectedAvailableIndex, index)
+        
+        if (!event.ctrlKey && !event.metaKey) {
+            newSet.clear()
         }
         
-        const ch = store.channels.find(c => c.ID === selectedAvailableChId.value)
-        if (ch) {
-            selectedZone.value.Channels.push(ch)
-            selectedAvailableChId.value = null
+        for (let i = start; i <= end; i++) {
+            const item = availableChannels.value[i]
+            if (item) newSet.add(item.ID)
+        }
+    } else if (event.ctrlKey || event.metaKey) {
+        if (newSet.has(ch.ID)) newSet.delete(ch.ID)
+        else newSet.add(ch.ID)
+        lastSelectedAvailableIndex = index
+    } else {
+        newSet.clear()
+        newSet.add(ch.ID)
+        lastSelectedAvailableIndex = index
+    }
+    selectedAvailableChIDs.value = newSet
+}
+
+const selectMember = (index: number, event: MouseEvent) => {
+     const newSet = new Set(selectedMemberIndices.value)
+
+    if (event.shiftKey && lastSelectedMemberIndex !== -1) {
+        const start = Math.min(lastSelectedMemberIndex, index)
+        const end = Math.max(lastSelectedMemberIndex, index)
+        
+        if (!event.ctrlKey && !event.metaKey) {
+            newSet.clear()
+        }
+        
+        for (let i = start; i <= end; i++) {
+            newSet.add(i)
+        }
+    } else if (event.ctrlKey || event.metaKey) {
+        if (newSet.has(index)) newSet.delete(index)
+        else newSet.add(index)
+        lastSelectedMemberIndex = index
+    } else {
+        newSet.clear()
+        newSet.add(index)
+        lastSelectedMemberIndex = index
+    }
+    selectedMemberIndices.value = newSet
+}
+
+
+// Actions
+const addToZone = () => {
+    if (selectedAvailableChIDs.value.size > 0 && selectedZone.value) {
+        const toAdd: Channel[] = []
+        // Maintain order
+        availableChannels.value.forEach(ch => {
+            if (selectedAvailableChIDs.value.has(ch.ID)) {
+                toAdd.push(ch)
+            }
+        })
+
+        if (toAdd.length > 0) {
+            selectedZone.value.Channels.push(...toAdd)
+            selectedAvailableChIDs.value = new Set()
+            lastSelectedAvailableIndex = -1
         }
     }
 }
 
 const removeFromZone = () => {
-    if (selectedMemberIndex.value !== null && selectedZone.value) {
-        selectedZone.value.Channels.splice(selectedMemberIndex.value, 1)
-        selectedMemberIndex.value = null
+    if (selectedMemberIndices.value.size > 0 && selectedZone.value) {
+        const indices = Array.from(selectedMemberIndices.value).sort((a, b) => b - a)
+        indices.forEach(idx => {
+            if (idx >= 0 && idx < selectedZone.value!.Channels.length) {
+                selectedZone.value!.Channels.splice(idx, 1)
+            }
+        })
+        selectedMemberIndices.value = new Set()
+        lastSelectedMemberIndex = -1
     }
 }
 
 const moveUp = () => {
-    const idx = selectedMemberIndex.value
+    if (selectedMemberIndices.value.size !== 1) return
+    const idx = Array.from(selectedMemberIndices.value)[0]
+
     if (idx !== null && idx > 0 && selectedZone.value) {
         const item = selectedZone.value.Channels[idx]
         selectedZone.value.Channels.splice(idx, 1)
         selectedZone.value.Channels.splice(idx - 1, 0, item)
-        selectedMemberIndex.value = idx - 1
+        
+        const newSet = new Set<number>()
+        newSet.add(idx - 1)
+        selectedMemberIndices.value = newSet
+        lastSelectedMemberIndex = idx - 1
     }
 }
 
 const moveDown = () => {
-    const idx = selectedMemberIndex.value
+    if (selectedMemberIndices.value.size !== 1) return
+    const idx = Array.from(selectedMemberIndices.value)[0]
+
     if (idx !== null && selectedZone.value && idx < selectedZone.value.Channels.length - 1) {
         const item = selectedZone.value.Channels[idx]
         selectedZone.value.Channels.splice(idx, 1)
         selectedZone.value.Channels.splice(idx + 1, 0, item)
-        selectedMemberIndex.value = idx + 1
+        
+        const newSet = new Set<number>()
+        newSet.add(idx + 1)
+        selectedMemberIndices.value = newSet
+        lastSelectedMemberIndex = idx + 1
     }
 }
 
@@ -171,10 +259,10 @@ const deleteZone = async (id: number) => {
                  <div class="flex-1 bg-slate-900/50 border border-slate-800 rounded-2xl flex flex-col overflow-hidden">
                       <div class="p-3 bg-slate-900/80 border-b border-slate-800 text-xs font-bold text-slate-500 uppercase">Available Channels</div>
                       <div class="flex-1 overflow-y-auto p-2 space-y-1">
-                          <div v-for="ch in availableChannels" :key="ch.ID"
-                               @click="selectedAvailableChId = ch.ID"
-                               class="px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors"
-                               :class="selectedAvailableChId === ch.ID ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800'">
+                          <div v-for="(ch, index) in availableChannels" :key="ch.ID"
+                               @click="selectAvailable(ch, index, $event)"
+                               class="px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors select-none"
+                               :class="selectedAvailableChIDs.has(ch.ID) ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800'">
                                {{ ch.Name }} <span class="opacity-50 text-xs ml-2">{{ ch.RxFrequency }}</span>
                           </div>
                       </div>
@@ -195,9 +283,9 @@ const deleteZone = async (id: number) => {
                       <div class="p-3 bg-slate-900/80 border-b border-slate-800 text-xs font-bold text-slate-500 uppercase">Zone Members</div>
                       <div class="flex-1 overflow-y-auto p-2 space-y-1">
                           <div v-for="(ch, idx) in selectedZone.Channels" :key="idx"
-                               @click="selectedMemberIndex = idx"
-                               class="px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors flex justify-between"
-                               :class="selectedMemberIndex === idx ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800'">
+                               @click="selectMember(idx, $event)"
+                               class="px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors flex justify-between select-none"
+                               :class="selectedMemberIndices.has(idx) ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800'">
                                <span>{{ idx + 1 }}. {{ ch.Name }}</span>
                                <span class="opacity-50 font-mono">{{ ch.RxFrequency }}</span>
                           </div>
@@ -206,10 +294,16 @@ const deleteZone = async (id: number) => {
 
                  <!-- Reorder Controls -->
                   <div class="flex flex-col justify-center gap-2">
-                     <button @click="moveUp" class="p-2 bg-slate-800 hover:bg-slate-700 rounded text-slate-300 transition-colors" title="Move Up">
+                     <button @click="moveUp" 
+                        class="p-2 bg-slate-800 hover:bg-slate-700 rounded text-slate-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
+                        :disabled="selectedMemberIndices.size !== 1"
+                        title="Move Up">
                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
                      </button>
-                     <button @click="moveDown" class="p-2 bg-slate-800 hover:bg-slate-700 rounded text-slate-300 transition-colors" title="Move Down">
+                     <button @click="moveDown" 
+                        class="p-2 bg-slate-800 hover:bg-slate-700 rounded text-slate-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
+                        :disabled="selectedMemberIndices.size !== 1"
+                        title="Move Down">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
                      </button>
                  </div>

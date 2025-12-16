@@ -41,6 +41,7 @@ const sections = ref([
     items: [
        { name: 'Talk Groups', path: '/dmr-talkgroups' },
        { name: 'CSV Contacts', path: '/dmr-contacts' },
+       { name: 'Filter Lists', path: '/filter-lists' },
        { name: 'Radio ID List', path: '#' }, // Placeholder
     ]
   },

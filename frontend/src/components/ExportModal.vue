@@ -24,7 +24,20 @@
         </p>
       </div>
 
-      <!-- Zone Selection -->
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-slate-400 mb-1">Filter Contacts</label>
+        <select v-model="selectedFilterList" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-white focus:outline-none focus:border-indigo-500">
+           <option value="">None (Export All / Default Limit)</option>
+           <option v-for="list in filterLists" :key="list.ID" :value="list.Name">
+             {{ list.Name }} ({{ list.Count }} entries)
+           </option>
+        </select>
+        <p class="text-xs text-slate-500 mt-1">
+          Apply a filter list to specific radio formats (DM32UV, AnyTone). Only contacts in the list will be exported.
+        </p>
+      </div>
+
+       <!-- Zone Selection -->
       <div class="mb-6">
         <label class="block text-sm font-medium text-slate-400 mb-2">Zones to Export</label>
         
@@ -59,7 +72,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 
 const props = defineProps<{
   isOpen: boolean
@@ -72,6 +85,23 @@ const selectedFormat = ref('at890')
 const selectAll = ref(true)
 const selectedZoneIDs = ref<number[]>([])
 const isExporting = ref(false)
+const selectedFilterList = ref('')
+const filterLists = ref<any[]>([])
+
+const fetchFilterLists = async () => {
+    try {
+        const res = await fetch('/api/filter_lists')
+        if (res.ok) {
+            filterLists.value = await res.json()
+        }
+    } catch (e) {
+        console.error("Failed to fetch filter lists", e)
+    }
+}
+
+onMounted(() => {
+    fetchFilterLists()
+})
 
 // Watch for selectAll change to clear individual selections or sync behavior logic if needed
 // Actually, if selectAll is true, we ignore selectedZoneIDs during export construction
@@ -91,6 +121,10 @@ const handleExport = () => {
     // Append zone IDs
     const ids = selectedZoneIDs.value.join(',')
     url += `&zone_id=${ids}`
+  }
+
+  if (selectedFilterList.value) {
+      url += `&use_list=${encodeURIComponent(selectedFilterList.value)}`
   }
 
   // Trigger download via window.location (simplest for file download)

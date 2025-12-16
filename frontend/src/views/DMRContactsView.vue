@@ -9,6 +9,10 @@ const total = ref(0)
 const search = ref('')
 const sort = ref('name')
 const order = ref('asc')
+const highlightFilter = ref('')
+const highlightedIDs = ref(new Set<number>())
+const filterLists = ref<any[]>([])
+
 let searchTimeout: any
 
 const fetchContacts = async () => {
@@ -16,8 +20,43 @@ const fetchContacts = async () => {
     total.value = meta.total
 }
 
+const fetchFilterLists = async () => {
+    try {
+        const res = await fetch('/api/filter_lists')
+        if (res.ok) {
+            filterLists.value = await res.json()
+        }
+    } catch (e) {
+        console.error("Failed to fetch filter lists", e)
+    }
+}
+
+const updateHighlights = async () => {
+    if (!highlightFilter.value) {
+        highlightedIDs.value.clear()
+        return
+    }
+    // Fetch IDs for this list
+    try {
+        // First find list ID
+        const list = filterLists.value.find(l => l.Name === highlightFilter.value)
+        if (!list) return
+
+        const res = await fetch(`/api/filter_lists?id=${list.ID}&mode=ids`)
+        if (res.ok) {
+            const ids: number[] = await res.json()
+            highlightedIDs.value = new Set(ids)
+        }
+    } catch (e) {
+        console.error("Failed to fetch ids", e)
+    }
+}
+
+watch(highlightFilter, () => updateHighlights())
+
 onMounted(() => {
     fetchContacts()
+    fetchFilterLists()
 })
 
 watch(page, () => fetchContacts())
@@ -54,6 +93,14 @@ const toggleSort = (field: string) => {
               placeholder="Search by Name, Callsign, or ID..." 
               class="max-w-md w-full px-4 py-2 bg-slate-950/50 border border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 text-sm"
         >
+        
+        <!-- Highlight Dropdown -->
+        <select v-model="highlightFilter" class="bg-slate-950/50 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/50">
+            <option value="">No Highlight</option>
+            <option v-for="list in filterLists" :key="list.ID" :value="list.Name">
+                Highlight: {{ list.Name }}
+            </option>
+        </select>
       </div>
 
        <div class="flex items-center gap-4">
@@ -87,7 +134,8 @@ const toggleSort = (field: string) => {
         </thead>
         <tbody class="divide-y divide-slate-800/50">
           <tr v-for="c in store.dmrContacts" :key="c.ID" 
-              class="group hover:bg-slate-800/30 transition-colors">
+              class="group hover:bg-slate-800/30 transition-colors"
+              :class="{'bg-indigo-900/30 hover:bg-indigo-900/50': highlightedIDs.has(c.DMRID)}">
             <td class="px-6 py-3 font-mono text-indigo-300">{{ c.DMRID }}</td>
             <td class="px-6 py-3 font-medium text-slate-200">{{ c.Callsign }}</td>
             <td class="px-6 py-3 text-slate-400">{{ c.Name }}</td>

@@ -1,3 +1,0 @@
-Location,Name,Frequency,Duplex,Offset,Tone,rToneFreq,cToneFreq,DtcsCode,DtcsPolarity,Mode,TStep,Skip,Comment,URCALL,RPT1CALL,RPT2CALL,DVCODE
-1,ChirpTest,146.520000,,0.000000,,88.5,88.5,023,NN,NFM,5.00,,,,,,
-2,Repeater,147.000000,+,0.600000,TSQL,88.5,88.5,,,NFM,5.00,,,,,,
