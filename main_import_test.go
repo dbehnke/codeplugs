@@ -127,3 +127,86 @@ GenericFallbackCh,146.520000000000001,NFM,50W
 		t.Errorf("Expected RxFrequency 146.52, got %v", ch.RxFrequency)
 	}
 }
+
+func TestImportSingleFile(t *testing.T) {
+	// Setup DB
+	tmpDB, _ := os.CreateTemp("", "test-single-*.db")
+	defer os.Remove(tmpDB.Name())
+	database.Connect(tmpDB.Name())
+	defer database.Close()
+
+	// 1. Test Generic Talkgroup Import
+	tgCSV := `Name,ID,Type
+MyTalkgroup,12345,Group
+PrivateContact,99999,Private
+`
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("file", "talkgroups.csv")
+	if err != nil {
+		t.Fatal(err)
+	}
+	part.Write([]byte(tgCSV))
+	writer.WriteField("format", "single")
+	writer.WriteField("import_type", "talkgroups")
+	writer.WriteField("radio_platform", "generic")
+	writer.Close()
+
+	req, _ := http.NewRequest("POST", "/api/import", body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	rr := httptest.NewRecorder()
+	http.HandlerFunc(handleImport).ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("Talkgroup import failed with status: %d", rr.Code)
+	}
+
+	// Verify DB
+	var contacts []models.Contact
+	database.DB.Find(&contacts)
+	if len(contacts) != 2 {
+		t.Errorf("Expected 2 contacts, got %d", len(contacts))
+	}
+	for _, c := range contacts {
+		if c.DMRID == 12345 {
+			if c.Type != models.ContactTypeGroup {
+				t.Errorf("Expected Group type for 12345")
+			}
+		}
+		if c.DMRID == 99999 {
+			if c.Type != models.ContactTypePrivate {
+				t.Errorf("Expected Private type for 99999")
+			}
+		}
+	}
+
+	// 2. Test Generic Channel Import
+	chanCSV := `Name,Rx Freq
+SingleChan,145.500
+`
+	body2 := &bytes.Buffer{}
+	writer2 := multipart.NewWriter(body2)
+	part2, _ := writer2.CreateFormFile("file", "channel.csv")
+	part2.Write([]byte(chanCSV))
+	writer2.WriteField("format", "single")
+	writer2.WriteField("import_type", "channels")
+	writer2.WriteField("radio_platform", "generic")
+	writer2.Close()
+
+	req2, _ := http.NewRequest("POST", "/api/import", body2)
+	req2.Header.Set("Content-Type", writer2.FormDataContentType())
+
+	rr2 := httptest.NewRecorder()
+	http.HandlerFunc(handleImport).ServeHTTP(rr2, req2)
+
+	if rr2.Code != http.StatusOK {
+		t.Fatalf("Channel import failed with status: %d", rr2.Code)
+	}
+
+	var ch models.Channel
+	database.DB.First(&ch, "name = ?", "SingleChan")
+	if ch.ID == 0 {
+		t.Error("Expected channel SingleChan to be imported")
+	}
+}

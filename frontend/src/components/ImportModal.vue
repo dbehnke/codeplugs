@@ -13,6 +13,7 @@
         <select v-model="selectedFormat" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-white focus:outline-none focus:border-indigo-500">
           <option value="generic">Generic / Chirp (CSV)</option>
           <option value="zip">Zip / Folder Import</option>
+          <option value="single">Single File Import</option>
           <option value="radioid">RadioID / Digital Contacts</option>
           <option value="filter_list">Contact Filter List</option>
           <option value="db">Database Restore (.db)</option>
@@ -23,6 +24,33 @@
          <p class="text-xs text-slate-500 mt-1" v-if="selectedFormat==='db'">
           <span class="text-amber-500">WARNING:</span> This will replace the entire database.
         </p>
+         <p class="text-xs text-slate-500 mt-1" v-if="selectedFormat==='single'">
+          Import a specific file type (e.g. just Channels or Talkgroups).
+        </p>
+       </div>
+
+      <!-- Single File Options -->
+      <div v-if="selectedFormat === 'single'" class="mb-4 space-y-4 bg-slate-900/50 p-3 rounded border border-slate-700/50">
+          <div>
+            <label class="block text-sm font-medium text-slate-400 mb-1">Data Type</label>
+            <select v-model="importType" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-white focus:outline-none focus:border-indigo-500">
+                <option value="channels">Channels</option>
+                <option value="talkgroups">Talkgroups (Contacts)</option>
+                <option value="contacts">Digital Contacts (Global Directory)</option>
+                <option value="zones">Zones</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-400 mb-1">Radio Format</label>
+             <select v-model="radioPlatform" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-white focus:outline-none focus:border-indigo-500">
+                <option value="generic">Generic CSV / Chirp (Channels Only)</option>
+                <option value="dm32uv">Baofeng DM32UV</option>
+                <option value="at890">AnyTone 890</option>
+            </select>
+            <p class="text-xs text-slate-500 mt-1" v-if="radioPlatform === 'generic' && importType !== 'channels' && importType !== 'talkgroups'">
+                Generic import for this type might be limited or unsupported.
+            </p>
+          </div>
       </div>
 
       <!-- List Name Input (for Filter List) -->
@@ -75,7 +103,7 @@
       </div>
 
       <!-- Mode Toggle for Generic (Overwrite/Append) -->
-       <div class="mb-6 p-4 bg-slate-900/50 rounded border border-slate-700/50" v-if="selectedFormat === 'generic' || selectedFormat === 'radioid'">
+       <div class="mb-6 p-4 bg-slate-900/50 rounded border border-slate-700/50" v-if="selectedFormat === 'generic' || selectedFormat === 'radioid' || selectedFormat === 'single'">
         <label class="block text-sm font-medium text-slate-400 mb-2">Import Mode</label>
         <div class="flex gap-4">
              <label class="flex items-center space-x-2 cursor-pointer">
@@ -142,6 +170,8 @@ const isImporting = ref(false)
 const overwrite = ref(false)
 const listName = ref('')
 const sourceMode = ref('upload') 
+const importType = ref('channels')
+const radioPlatform = ref('generic')
 const uploadStatus = ref<{type: string, message: string} | null>(null)
 
 // Progress State
@@ -240,7 +270,14 @@ const handleImport = async () => {
   if (sourceMode.value === 'upload' && !selectedFile.value) return
 
   if (overwrite.value) {
-    if (!confirm("Are you sure you want to overwrite all existing channels? This action cannot be undone.")) {
+    let itemType = 'channels';
+    if (selectedFormat.value === 'single') {
+        itemType = importType.value;
+    } else if (selectedFormat.value === 'radioid') {
+        itemType = 'digital contacts';
+    }
+    
+    if (!confirm(`Are you sure you want to overwrite all existing ${itemType}? This action cannot be undone.`)) {
       return
     }
   }
@@ -256,6 +293,8 @@ const handleImport = async () => {
   formData.append('overwrite', overwrite.value.toString())
   formData.append('list_name', listName.value)
   formData.append('source_mode', sourceMode.value)
+  formData.append('import_type', importType.value)
+  formData.append('radio_platform', radioPlatform.value)
 
   let url = `/api/import?format=${selectedFormat.value}`
 

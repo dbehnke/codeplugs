@@ -273,3 +273,72 @@ func ImportChannelsCSV(r io.Reader) ([]models.Channel, error) {
 
 	return channels, nil
 }
+
+// ImportGenericTalkgroups imports contacts (talkgroups) from a simple CSV (Name,ID,Type).
+func ImportGenericTalkgroups(r io.Reader) ([]models.Contact, error) {
+	csvReader := csv.NewReader(r)
+	csvReader.LazyQuotes = true
+	headers, err := csvReader.Read()
+	if err != nil {
+		return nil, err
+	}
+
+	headerMap := make(map[string]int)
+	for i, h := range headers {
+		headerMap[h] = i
+	}
+
+	var contacts []models.Contact
+
+	for {
+		record, err := csvReader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		getVal := func(colName string) string {
+			if idx, ok := headerMap[colName]; ok && idx < len(record) {
+				return record[idx]
+			}
+			return ""
+		}
+
+		// Try to match common headers
+		name := getVal("Name")
+		if name == "" {
+			name = getVal("Talkgroup")
+		}
+
+		idStr := getVal("ID")
+		if idStr == "" {
+			idStr = getVal("DMRID")
+		}
+
+		if name == "" || idStr == "" {
+			continue
+		}
+
+		id, _ := strconv.Atoi(idStr)
+		c := models.Contact{
+			Name:  name,
+			DMRID: id,
+			Type:  models.ContactTypeGroup, // Default
+		}
+
+		typeStr := getVal("Type")
+		if typeStr != "" {
+			if typeStr == "Private" || typeStr == "Private Call" {
+				c.Type = models.ContactTypePrivate
+			} else if typeStr == "All" || typeStr == "All Call" {
+				c.Type = models.ContactTypeAllCall
+			}
+		}
+
+		contacts = append(contacts, c)
+	}
+
+	return contacts, nil
+}
