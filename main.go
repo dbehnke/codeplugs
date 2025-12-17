@@ -595,6 +595,7 @@ func main() {
 func startServer(port string) {
 	// API Routes
 	http.HandleFunc("/api/channels", handleChannels)
+	http.HandleFunc("/api/channels/reorder", handleChannelReorder)
 	http.HandleFunc("/api/import", handleImport)
 	http.HandleFunc("/api/export", handleExport)
 	http.HandleFunc("/api/contacts", handleContacts)
@@ -670,6 +671,138 @@ func handleChannels(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 		}
 	}
+}
+
+func handleChannelReorder(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		IDs []uint `json:"ids"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var count int64
+	database.DB.Model(&models.Channel{}).Count(&count)
+	if int64(len(req.IDs)) != count {
+		msg := fmt.Sprintf("ID count mismatch: received %d, expected %d", len(req.IDs), count)
+		log.Println(msg)
+		http.Error(w, msg, http.StatusBadRequest)
+		return
+	}
+
+	log.Printf("Reordering %d channels...", count)
+
+	tx := database.DB.Begin()
+	if tx.Error != nil {
+		http.Error(w, "Failed to begin transaction", http.StatusInternalServerError)
+		return
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 1. Store current associations in memory
+	var zoneChannels []models.ZoneChannel
+	if err := tx.Find(&zoneChannels).Error; err != nil {
+		tx.Rollback()
+		http.Error(w, "Failed to read zone associations", http.StatusInternalServerError)
+		return
+	}
+
+	var scanListChannels []models.ScanListChannel
+	if err := tx.Find(&scanListChannels).Error; err != nil {
+		tx.Rollback()
+		http.Error(w, "Failed to read scanlist associations", http.StatusInternalServerError)
+		return
+	}
+
+	// 2. Clear association tables to remove FK constraints
+	if err := tx.Exec("DELETE FROM zone_channels").Error; err != nil {
+		tx.Rollback()
+		http.Error(w, "Failed to clear zone_channels", http.StatusInternalServerError)
+		return
+	}
+	if err := tx.Exec("DELETE FROM scan_list_channels").Error; err != nil {
+		tx.Rollback()
+		http.Error(w, "Failed to clear scan_list_channels", http.StatusInternalServerError)
+		return
+	}
+
+	// 3. Perform the ID shuffle in-place, now that FKs are gone.
+	const tempOffset = 1000000 // A large number to avoid collisions
+	idMap := make(map[uint]uint)
+
+	// 3a. Shift all channel IDs to a temporary high range
+	if err := tx.Exec("UPDATE channels SET id = id + ?", tempOffset).Error; err != nil {
+		tx.Rollback()
+		http.Error(w, "Failed to shift channel IDs to temp range", http.StatusInternalServerError)
+		return
+	}
+
+	// 3b. Update channels from their temp ID to the new final ID
+	for i, oldID := range req.IDs {
+		newID := uint(i + 1)
+		tempID := oldID + tempOffset
+		idMap[oldID] = newID // Store mapping from original ID to new ID
+
+		if err := tx.Exec("UPDATE channels SET id = ? WHERE id = ?", newID, tempID).Error; err != nil {
+			tx.Rollback()
+			log.Printf("Error restoring channel ID %d (temp %d) to %d: %v", oldID, tempID, newID, err)
+			http.Error(w, "Failed to update channel to new ID", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// 4. Re-create associations using the stored map
+	newZoneChannels := make([]models.ZoneChannel, 0, len(zoneChannels))
+	for _, zc := range zoneChannels {
+		if newChanID, ok := idMap[zc.ChannelID]; ok {
+			newZoneChannels = append(newZoneChannels, models.ZoneChannel{
+				ZoneID:    zc.ZoneID,
+				ChannelID: newChanID,
+			})
+		}
+	}
+	if len(newZoneChannels) > 0 {
+		if err := tx.Create(&newZoneChannels).Error; err != nil {
+			tx.Rollback()
+			http.Error(w, "Failed to restore zone associations", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	newScanListChannels := make([]models.ScanListChannel, 0, len(scanListChannels))
+	for _, slc := range scanListChannels {
+		if newChanID, ok := idMap[slc.ChannelID]; ok {
+			newScanListChannels = append(newScanListChannels, models.ScanListChannel{
+				ScanListID: slc.ScanListID,
+				ChannelID:  newChanID,
+			})
+		}
+	}
+	if len(newScanListChannels) > 0 {
+		if err := tx.Create(&newScanListChannels).Error; err != nil {
+			tx.Rollback()
+			http.Error(w, "Failed to restore scanlist associations", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// 5. Commit
+	if err := tx.Commit().Error; err != nil {
+		http.Error(w, "Transaction commit failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func handleImport(w http.ResponseWriter, r *http.Request) {

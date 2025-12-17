@@ -16,8 +16,12 @@ func Connect(dbPath string) {
 	var err error
 	DB, err = gorm.Open(sqlite.Dialector{
 		DriverName: "sqlite",
-		DSN:        dbPath + "?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)",
-	}, &gorm.Config{})
+		DSN:        dbPath + "?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)&_pragma=foreign_keys(1)",
+	}, &gorm.Config{
+		// Disable built-in foreign key constraints during AutoMigrate if we want to rely on SQLite's ON UPDATE CASCADE
+		// But usually GORM handles migrations well.
+		// For Sort/Reorder we need CASCADE updates.
+	})
 
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)

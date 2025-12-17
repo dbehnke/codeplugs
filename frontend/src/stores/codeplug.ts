@@ -170,6 +170,56 @@ export const useCodeplugStore = defineStore('codeplug', () => {
         }
     }
 
+    async function bulkUpdateChannels(updates: Partial<Channel>, ids: number[]) {
+        try {
+            // We use the same save API but iterate.
+            // Ideally backend bulk API, but loop is fine here.
+            // Actually, we should probably fetch the channels to merge properly?
+            // Or just assume `updates` has the diff.
+            // Since we know what fields we changed, we can iterate:
+
+            // To be safe and efficient, we can use a new backend endpoint
+            // OR just iterate saves. Let's iterate saves for now as MVP.
+            // But we need to be careful: the `updates` object only has changed keys.
+            // We need to fetch the original channel, apply updates, and save.
+
+            // Optimization: Filter from local store.
+            const targets = channels.value.filter(c => ids.includes(c.ID))
+
+            const promises = targets.map(ch => {
+                const newCh = { ...ch, ...updates }
+                // Remove undefineds just in case? No, json stringify handles it.
+                return fetch('/api/channels', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newCh)
+                })
+            })
+
+            await Promise.all(promises)
+            await fetchChannels() // Refresh
+        } catch (e) {
+            console.error("Bulk update failed", e)
+            throw e
+        }
+    }
+
+    async function reorderChannels(ids: number[]) {
+        try {
+            const res = await fetch('/api/channels/reorder', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids })
+            })
+            if (!res.ok) throw new Error("Reorder failed: " + await res.text())
+            // Refetch to see new IDs
+            await fetchChannels()
+        } catch (e) {
+            console.error("Reorder failed", e)
+            throw e
+        }
+    }
+
     return {
         channels,
         zones,
@@ -187,6 +237,8 @@ export const useCodeplugStore = defineStore('codeplug', () => {
         fetchTalkgroups,
         fetchDMRContacts,
         deleteChannel,
-        saveChannel
+        saveChannel,
+        bulkUpdateChannels,
+        reorderChannels
     }
 })
