@@ -57,7 +57,7 @@ func TestImportAnyTone890Channels(t *testing.T) {
 	if ch.Name != "ATCh1" {
 		t.Errorf("Expected ATCh1, got %s", ch.Name)
 	}
-	if ch.Type != models.ChannelTypeDigital {
+	if ch.Type != models.ChannelTypeDigitalDMR {
 		t.Errorf("Expected Digital, got %s", ch.Type)
 	}
 	if ch.TimeSlot != 1 {

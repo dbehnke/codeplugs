@@ -7,7 +7,7 @@ import (
 func TestChannelValidation(t *testing.T) {
 	// 1. Test Channel Types
 	t.Run("Valid Channel Types", func(t *testing.T) {
-		validTypes := []ChannelType{ChannelTypeAnalog, ChannelTypeDigital, ChannelTypeMixed}
+		validTypes := []ChannelType{ChannelTypeAnalog, ChannelTypeDigitalDMR, ChannelTypeMixed}
 		for _, vt := range validTypes {
 			c := Channel{Type: vt}
 			if !c.HasValidType() {
@@ -38,7 +38,7 @@ func TestChannelValidation(t *testing.T) {
 	t.Run("DMR Validation", func(t *testing.T) {
 		// Valid DMR
 		c := Channel{
-			Type:      ChannelTypeDigital,
+			Type:      ChannelTypeDigitalDMR,
 			Protocol:  ProtocolDMR,
 			ColorCode: 1,
 			TimeSlot:  1,
@@ -49,7 +49,7 @@ func TestChannelValidation(t *testing.T) {
 
 		// Invalid DMR (Missing Color Code)
 		cInvalid := Channel{
-			Type:      ChannelTypeDigital,
+			Type:      ChannelTypeDigitalDMR,
 			Protocol:  ProtocolDMR,
 			ColorCode: 0, // Invalid (usually 0-15, but 0 often means not set)
 			TimeSlot:  1,

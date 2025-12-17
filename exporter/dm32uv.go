@@ -90,7 +90,7 @@ func ExportDM32UVChannels(channels []models.Channel, w io.Writer) error {
 		record := make([]string, len(header))
 		record[0] = strconv.Itoa(i + 1)
 		record[1] = c.Name
-		if c.Type == models.ChannelTypeDigital {
+		if c.IsDigital() {
 			record[2] = "Digital"
 		} else {
 			record[2] = "Analog"

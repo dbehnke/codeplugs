@@ -118,7 +118,7 @@ func ExportAnyTone890Channels(channels []models.Channel, contactMap map[string]m
 		record[1] = c.Name
 		record[2] = fmt.Sprintf("%.5f", c.RxFrequency)
 		record[3] = fmt.Sprintf("%.5f", c.TxFrequency)
-		if c.Type == models.ChannelTypeDigital {
+		if c.IsDigital() {
 			record[4] = "D-Digital"
 		} else {
 			record[4] = "A-Analog"
@@ -164,7 +164,7 @@ func ExportAnyTone890Channels(channels []models.Channel, contactMap map[string]m
 
 		record[12] = "" // Radio ID (Blank in working for Analog)
 		// For Digital, usually needs a value. If generic logic:
-		if c.Type == models.ChannelTypeDigital && record[12] == "" {
+		if c.IsDigital() && record[12] == "" {
 			record[12] = "1" // Default Radio ID for Digital
 		}
 

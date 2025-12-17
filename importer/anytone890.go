@@ -47,7 +47,7 @@ func ImportAnyTone890Channels(db *gorm.DB, r io.Reader) error {
 		}
 		if idx, ok := headerMap["Channel Type"]; ok {
 			if record[idx] == "D-Digital" {
-				c.Type = models.ChannelTypeDigital
+				c.Type = models.ChannelTypeDigitalDMR
 				c.Protocol = models.ProtocolDMR
 			} else {
 				c.Type = models.ChannelTypeAnalog

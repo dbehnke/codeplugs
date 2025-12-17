@@ -61,7 +61,7 @@ func TestImportDM32UVChannels(t *testing.T) {
 	if ch.RxFrequency != 440.0 {
 		t.Errorf("Expected RxFreq 440.0, got %f", ch.RxFrequency)
 	}
-	if ch.Type != models.ChannelTypeDigital {
+	if ch.Type != models.ChannelTypeDigitalDMR {
 		t.Errorf("Expected Digital, got %s", ch.Type)
 	}
 }

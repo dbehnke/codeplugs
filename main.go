@@ -148,7 +148,7 @@ func main() {
 			if ch.Type == models.ChannelTypeAnalog && ch.Bandwidth != "25" {
 				ch.Bandwidth = "25"
 				updated = true
-			} else if (ch.Type == models.ChannelTypeDigital || ch.Type == models.ChannelTypeMixed) && ch.Bandwidth != "12.5" {
+			} else if (ch.IsDigital() || ch.Type == models.ChannelTypeMixed) && ch.Bandwidth != "12.5" {
 				// Naive assumption: Mixed/Digital default to 12.5, though Mixed might warrant 25 depending on user pref.
 				// User request said "Digital default 12.5", "Analog 25".
 				// Let's stick to strict interpretation: Digital -> 12.5.

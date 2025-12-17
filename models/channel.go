@@ -80,7 +80,6 @@ type ChannelType string
 
 const (
 	ChannelTypeAnalog       ChannelType = "Analog"
-	ChannelTypeDigital      ChannelType = "Digital" // Generic fallback
 	ChannelTypeDigitalDMR   ChannelType = "Digital (DMR)"
 	ChannelTypeDigitalYSF   ChannelType = "Digital (YSF)"
 	ChannelTypeDigitalDStar ChannelType = "Digital (D-Star)"
@@ -101,7 +100,7 @@ const (
 )
 
 func (c *Channel) HasValidType() bool {
-	return c.Type == ChannelTypeAnalog || c.Type == ChannelTypeDigital || c.Type == ChannelTypeMixed
+	return c.Type == ChannelTypeAnalog || c.Type == ChannelTypeMixed || c.IsDigital()
 }
 
 func (c *Channel) HasValidProtocol() bool {

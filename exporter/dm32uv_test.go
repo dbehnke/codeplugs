@@ -32,7 +32,7 @@ func TestExportDM32UV(t *testing.T) {
 		Name:        "TestCh1",
 		RxFrequency: 440.0,
 		TxFrequency: 445.0,
-		Type:        models.ChannelTypeDigital,
+		Type:        models.ChannelTypeDigitalDMR,
 		TxContact:   "TestGroup",
 		RxGroup:     "TestGroup",
 		TimeSlot:    1,

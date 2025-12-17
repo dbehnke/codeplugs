@@ -56,7 +56,7 @@ func ImportDM32UVChannels(db *gorm.DB, r io.Reader) error {
 		if idx, ok := headerMap["Channel Type"]; ok {
 			cType := record[idx]
 			if cType == "Digital" {
-				channel.Type = models.ChannelTypeDigital
+				channel.Type = models.ChannelTypeDigitalDMR
 				channel.Protocol = models.ProtocolDMR
 			} else {
 				channel.Type = models.ChannelTypeAnalog
