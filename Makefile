@@ -5,10 +5,10 @@ BINARY_NAME=codeplugs
 all: build
 
 frontend-install:
-	cd frontend && npm install
+	cd frontend && bun install
 
 frontend-build: frontend-install
-	cd frontend && npm run build
+	cd frontend && bun run build
 
 # Build the Go binary (including embedded frontend)
 build: frontend-build

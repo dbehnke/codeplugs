@@ -8,10 +8,14 @@ import (
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	_ "modernc.org/sqlite"
 )
 
 func setupDM32UVTestDB(t *testing.T) *gorm.DB {
-	db, err := gorm.Open(sqlite.Open("file:dm32uv_imp?mode=memory&cache=shared"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Dialector{
+		DriverName: "sqlite",
+		DSN:        "file:memdb_dm32uv_imp?mode=memory&cache=shared",
+	}, &gorm.Config{})
 	if err != nil {
 		t.Fatalf("failed to connect database: %v", err)
 	}

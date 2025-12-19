@@ -3,6 +3,7 @@ package main
 import (
 	"archive/zip"
 	"bytes"
+	"codeplugs/api"
 	"codeplugs/database"
 	"codeplugs/models"
 
@@ -17,7 +18,10 @@ import (
 
 func TestHandleExport_AnyTone890(t *testing.T) {
 	// Setup in-memory DB
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Dialector{
+		DriverName: "sqlite",
+		DSN:        "file:memdb_main_at890?mode=memory&cache=shared",
+	}, &gorm.Config{})
 	if err != nil {
 		t.Fatalf("Failed to open db: %v", err)
 	}
@@ -36,7 +40,7 @@ func TestHandleExport_AnyTone890(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	// Call handler
-	handler := http.HandlerFunc(handleExport)
+	handler := http.HandlerFunc(api.HandleExport)
 	handler.ServeHTTP(rr, req)
 
 	// Check status code

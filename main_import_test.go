@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"codeplugs/api"
 	"codeplugs/database"
 	"codeplugs/models"
 	"mime/multipart"
@@ -49,7 +50,7 @@ func TestImportResurrectsSoftDeleted(t *testing.T) {
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	rr := httptest.NewRecorder()
-	http.HandlerFunc(handleImport).ServeHTTP(rr, req)
+	http.HandlerFunc(api.HandleImport).ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusOK {
 		t.Fatalf("Import failed with status: %d", rr.Code)
@@ -95,7 +96,7 @@ GenericFallbackCh,146.520000000000001,NFM,50W
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	rr := httptest.NewRecorder()
-	http.HandlerFunc(handleImport).ServeHTTP(rr, req)
+	http.HandlerFunc(api.HandleImport).ServeHTTP(rr, req)
 
 	if status := rr.Code; status != http.StatusOK {
 		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
@@ -156,7 +157,7 @@ PrivateContact,99999,Private
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	rr := httptest.NewRecorder()
-	http.HandlerFunc(handleImport).ServeHTTP(rr, req)
+	http.HandlerFunc(api.HandleImport).ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusOK {
 		t.Fatalf("Talkgroup import failed with status: %d", rr.Code)
@@ -198,7 +199,7 @@ SingleChan,145.500
 	req2.Header.Set("Content-Type", writer2.FormDataContentType())
 
 	rr2 := httptest.NewRecorder()
-	http.HandlerFunc(handleImport).ServeHTTP(rr2, req2)
+	http.HandlerFunc(api.HandleImport).ServeHTTP(rr2, req2)
 
 	if rr2.Code != http.StatusOK {
 		t.Fatalf("Channel import failed with status: %d", rr2.Code)

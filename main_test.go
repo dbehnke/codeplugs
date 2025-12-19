@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"codeplugs/api"
 	"codeplugs/database"
 	"codeplugs/models"
 	"encoding/json"
@@ -15,7 +16,7 @@ import (
 
 func TestMain(m *testing.M) {
 	// Start hub for tests to avoid deadlock on broadcast
-	go hub.run()
+	go api.Hub.Run()
 	os.Exit(m.Run())
 }
 
@@ -31,7 +32,7 @@ func TestHandleContacts(t *testing.T) {
 	// 1. Test GET empty
 	req, _ := http.NewRequest("GET", "/api/contacts", nil)
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(handleContacts)
+	handler := http.HandlerFunc(api.HandleContacts)
 	handler.ServeHTTP(rr, req)
 
 	if status := rr.Code; status != http.StatusOK {
@@ -125,7 +126,7 @@ func TestContactReferentialIntegrity(t *testing.T) {
 	// 3. Attempt Delete Contact (Should Fail)
 	req, _ := http.NewRequest("DELETE", "/api/contacts?id="+jsonNumber(contact.ID), nil)
 	rr := httptest.NewRecorder()
-	http.HandlerFunc(handleContacts).ServeHTTP(rr, req)
+	http.HandlerFunc(api.HandleContacts).ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusConflict {
 		t.Errorf("Expected 409 Conflict when deleting used contact, got %d", rr.Code)
@@ -155,7 +156,7 @@ MyChannel,446.000,DMR,Biff
 	tmpCSV.WriteString(csvContent)
 	tmpCSV.Close()
 
-	// 3. Call handleImport (mocking request)
+	// 3. Call HandleImport (mocking request)
 	// We need to construct a multipart request
 	body := new(bytes.Buffer)
 	writer := multipart.NewWriter(body)
@@ -167,7 +168,7 @@ MyChannel,446.000,DMR,Biff
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	rr := httptest.NewRecorder()
-	http.HandlerFunc(handleImport).ServeHTTP(rr, req)
+	http.HandlerFunc(api.HandleImport).ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusOK {
 		t.Fatalf("Import failed with status: %d", rr.Code)
@@ -214,7 +215,7 @@ func TestImportRadioIDIntegration(t *testing.T) {
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	rr := httptest.NewRecorder()
-	http.HandlerFunc(handleImport).ServeHTTP(rr, req)
+	http.HandlerFunc(api.HandleImport).ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusOK {
 		t.Fatalf("Import failed with status: %d", rr.Code)

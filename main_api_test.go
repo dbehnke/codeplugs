@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"codeplugs/api"
 	"codeplugs/database"
 	"codeplugs/models"
 	"encoding/json"
@@ -17,7 +18,10 @@ import (
 // setupTestDB creates an in-memory SQLite DB for testing
 func setupTestDB() {
 	var err error
-	database.DB, err = gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	database.DB, err = gorm.Open(sqlite.Dialector{
+		DriverName: "sqlite",
+		DSN:        "file:memdb_main_api?mode=memory&cache=shared",
+	}, &gorm.Config{})
 	if err != nil {
 		panic("failed to connect database")
 	}
@@ -40,7 +44,7 @@ func TestZoneAPI_CRUD(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	// Handler to be implemented
-	handleZones(rr, req)
+	api.HandleZones(rr, req)
 
 	if status := rr.Code; status != http.StatusOK {
 		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
@@ -58,7 +62,7 @@ func TestZoneAPI_CRUD(t *testing.T) {
 	// 2. List Zones
 	req, _ = http.NewRequest("GET", "/api/zones", nil)
 	rr = httptest.NewRecorder()
-	handleZones(rr, req)
+	api.HandleZones(rr, req)
 
 	var zones []models.Zone
 	json.Unmarshal(rr.Body.Bytes(), &zones)
@@ -72,7 +76,7 @@ func TestZoneAPI_CRUD(t *testing.T) {
 	deleteURL := fmt.Sprintf("/api/zones?id=%d", createdZone.ID)
 	req, _ = http.NewRequest("DELETE", deleteURL, nil)
 	rr = httptest.NewRecorder()
-	handleZones(rr, req)
+	api.HandleZones(rr, req)
 
 	if rr.Code != http.StatusOK {
 		t.Errorf("delete failed")
@@ -117,7 +121,7 @@ func TestZoneAssignment_Ordering(t *testing.T) {
 
 	// Handler to be implemented
 
-	handleZoneAssignment(rr, req)
+	api.HandleZoneAssignment(rr, req)
 
 	if rr.Code != http.StatusOK {
 		t.Errorf("assignment failed: code %d", rr.Code)
@@ -135,7 +139,7 @@ func TestZoneAssignment_Ordering(t *testing.T) {
 	// Let's Fetch via API to confirm API respects it
 	req, _ = http.NewRequest("GET", fmt.Sprintf("/api/zones?id=%d", z.ID), nil)
 	rr = httptest.NewRecorder()
-	handleZones(rr, req)
+	api.HandleZones(rr, req)
 
 	var fetchedZone models.Zone
 	json.Unmarshal(rr.Body.Bytes(), &fetchedZone)
@@ -160,7 +164,7 @@ func TestExportAPI_Zip(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/api/export?radio=dm32uv", nil)
 	rr := httptest.NewRecorder()
 
-	handleExport(rr, req)
+	api.HandleExport(rr, req)
 
 	if rr.Code != http.StatusOK {
 		t.Errorf("export failed")

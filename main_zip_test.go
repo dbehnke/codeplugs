@@ -3,6 +3,7 @@ package main
 import (
 	"archive/zip"
 	"bytes"
+	"codeplugs/api"
 	"codeplugs/database"
 	"codeplugs/models"
 	"encoding/csv"
@@ -30,7 +31,7 @@ func TestZipExportHandler(t *testing.T) {
 	// Request DM32UV Zip
 	req, _ := http.NewRequest("GET", "/api/export?radio=dm32uv&format=zip", nil)
 	rr := httptest.NewRecorder()
-	http.HandlerFunc(handleExport).ServeHTTP(rr, req)
+	http.HandlerFunc(api.HandleExport).ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusOK {
 		t.Fatalf("Export request failed with code %d", rr.Code)
@@ -122,7 +123,7 @@ func TestZipImportHandler(t *testing.T) {
 	req, _ := http.NewRequest("POST", "/api/import?radio=dm32uv&format=zip", body)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	rr := httptest.NewRecorder()
-	http.HandlerFunc(handleImport).ServeHTTP(rr, req)
+	http.HandlerFunc(api.HandleImport).ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusOK {
 		t.Fatalf("Import failed with code %d: %s", rr.Code, rr.Body.String())
@@ -176,7 +177,7 @@ func TestZipRoundTrip(t *testing.T) {
 	// 1. Export to Zip
 	req, _ := http.NewRequest("GET", "/api/export?radio=dm32uv&format=zip", nil)
 	rr := httptest.NewRecorder()
-	http.HandlerFunc(handleExport).ServeHTTP(rr, req)
+	http.HandlerFunc(api.HandleExport).ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusOK {
 		t.Fatalf("RoundTrip: Export failed %d", rr.Code)
@@ -212,7 +213,7 @@ func TestZipRoundTrip(t *testing.T) {
 	reqIn, _ := http.NewRequest("POST", "/api/import?radio=dm32uv&format=zip", body)
 	reqIn.Header.Set("Content-Type", writer.FormDataContentType())
 	rrIn := httptest.NewRecorder()
-	http.HandlerFunc(handleImport).ServeHTTP(rrIn, reqIn)
+	http.HandlerFunc(api.HandleImport).ServeHTTP(rrIn, reqIn)
 
 	if rrIn.Code != http.StatusOK {
 		t.Fatalf("RoundTrip: Import failed %d: %s", rrIn.Code, rrIn.Body.String())

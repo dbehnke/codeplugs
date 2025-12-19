@@ -8,10 +8,14 @@ import (
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	_ "modernc.org/sqlite"
 )
 
 func setupAnyToneTestDB(t *testing.T) *gorm.DB {
-	db, err := gorm.Open(sqlite.Open("file:at890_imp?mode=memory&cache=shared"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Dialector{
+		DriverName: "sqlite",
+		DSN:        "file:memdb_at890_imp?mode=memory&cache=shared",
+	}, &gorm.Config{})
 	if err != nil {
 		t.Fatalf("failed to connect database: %v", err)
 	}

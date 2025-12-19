@@ -1,29 +1,22 @@
 # Binaries
 codeplugs
+main
 
 # Database
 *.db
-*.db-shm
+*.db-journal
 *.db-wal
-*.sqlite
 
-# OS Specific
+# Temporary Files
+tmp/
 .DS_Store
 
-# Test Artifacts and Temporary Files
-test_*.csv
-test_*.txt
-test-*.db*
-output_*/
-tmp/
+# Frontend
+frontend/node_modules/
+frontend/dist/
 
-# Editor/IDE
-.vscode/
-.idea/
+# CSVs (Optional, depends if you want to track them)
+# *.csv
 
-# User samples (if desired to ignore, but maybe keep for reference? user's call. I'll ignore specific large dirs if keys)
-# For now, ignoring the specific output dir we created
-output_at890/
-
-# Go
-go.work
+# Logs
+*.log
