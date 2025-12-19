@@ -4,4 +4,5 @@ type ZoneChannel struct {
 	ZoneID    uint `gorm:"primaryKey"`
 	ChannelID uint `gorm:"primaryKey"`
 	SortOrder int
+	Channel   Channel `gorm:"foreignKey:ChannelID"`
 }

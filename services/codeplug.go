@@ -46,26 +46,38 @@ func ResolveContacts(db *gorm.DB, channels []models.Channel) {
 	var contacts []models.Contact
 	db.Find(&contacts)
 	for _, c := range contacts {
-		contactMap[strings.ToUpper(c.Name)] = int(c.ID)
+		contactMap[strings.ToUpper(strings.TrimSpace(c.Name))] = int(c.ID)
 	}
 
 	for i := range channels {
 		// Try to match TxContact string to a Contact
 		if channels[i].TxContact != "" {
-			nameUpper := strings.ToUpper(channels[i].TxContact)
+			nameUpper := strings.ToUpper(strings.TrimSpace(channels[i].TxContact))
 			if id, ok := contactMap[nameUpper]; ok {
 				uid := uint(id)
 				channels[i].ContactID = &uid
 			} else {
 				// Auto-create?
+				// We need a unique ID to satisfy the (dmr_id, type) constraint.
+				// Since we don't know the ID, we'll assign a temporary negative ID.
+				var minID int
+				db.Model(&models.Contact{}).Select("MIN(dmr_id)").Scan(&minID)
+				if minID > 0 {
+					minID = 0
+				}
+				newID := minID - 1
+
 				newContact := models.Contact{
-					Name: channels[i].TxContact,
-					Type: models.ContactTypeGroup, // Default to Group
+					Name:  channels[i].TxContact,
+					Type:  models.ContactTypeGroup, // Default to Group
+					DMRID: newID,
 				}
 				if result := db.Create(&newContact); result.Error == nil {
 					uid := newContact.ID
 					channels[i].ContactID = &uid
 					contactMap[nameUpper] = int(newContact.ID)
+				} else {
+					log.Printf("Failed to auto-create contact %s: %v", channels[i].TxContact, result.Error)
 				}
 			}
 		}

@@ -23,15 +23,18 @@ Code Review Summary
     *   Fixed CGO requirement issues in tests by ensuring `modernc.org/sqlite` is used and configuring `sqlite.Dialector` with "sqlite" driver name.
     *   Fixed shared database state issues in tests by using unique in-memory database names.
 
-#### Phase 2: Model & Logic Improvements
+#### Phase 2: Model & Logic Improvements (COMPLETED)
 *   **Implement `SortOrder`**:
-    *   Add a `SortOrder` field to the `Channel` model.
-    *   Refactor `handleChannelReorder` to update this field instead of modifying primary keys.
+    *   Added `SortOrder` field to the `Channel` model.
+    *   Refactored `HandleChannelReorder` to update this field instead of modifying primary keys.
 *   **Enhance Zone Management**:
-    *   Ensure `ZoneChannel` associations correctly track `SortOrder` within a zone.
-    *   Add dedicated API endpoints for managing zone memberships.
+    *   Updated `ZoneChannel` model to include `Channel` association.
+    *   Added `ZoneChannels` one-to-many relationship to `Zone` model.
+    *   Refactored `HandleZoneAssignment` to explicitly save sort order in the join table.
+    *   Refactored `HandleZones` to preload `ZoneChannels` sorted by `SortOrder` and map them to the response.
 *   **Refine Contact Management**:
-    *   Improve the "Resolve Contacts" logic to ensure DMR channels are consistently linked to the correct talkgroups during import.
+    *   Improved `ResolveContacts` to use strict case-insensitive trimming for name matching.
+    *   Implemented auto-creation of missing contacts with temporary negative DMR IDs to avoid unique constraint violations.
 
 #### Phase 3: Feature Enhancements
 *   **Expand Radio Support**:

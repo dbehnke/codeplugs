@@ -9,6 +9,7 @@ import (
 type Channel struct {
 	gorm.Model
 	Name         string
+	SortOrder    int `gorm:"default:0"`
 	RxFrequency  float64
 	TxFrequency  float64
 	Mode         string // FM, DMR, C4FM, D-Star

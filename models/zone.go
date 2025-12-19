@@ -4,8 +4,9 @@ import "gorm.io/gorm"
 
 type Zone struct {
 	gorm.Model
-	Name     string
-	Channels []Channel `gorm:"many2many:zone_channels;"`
+	Name         string
+	Channels     []Channel     `gorm:"many2many:zone_channels;"`
+	ZoneChannels []ZoneChannel `gorm:"foreignKey:ZoneID"`
 }
 
 func FindOrCreateZone(db *gorm.DB, name string) (*Zone, error) {

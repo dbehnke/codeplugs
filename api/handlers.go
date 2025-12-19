@@ -27,7 +27,7 @@ func HandleChannels(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
 		var channels []models.Channel
-		database.DB.Find(&channels)
+		database.DB.Order("sort_order asc").Find(&channels)
 		json.NewEncoder(w).Encode(channels)
 	case "POST":
 		var ch models.Channel
@@ -64,16 +64,7 @@ func HandleChannelReorder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var count int64
-	database.DB.Model(&models.Channel{}).Count(&count)
-	if int64(len(req.IDs)) != count {
-		msg := fmt.Sprintf("ID count mismatch: received %d, expected %d", len(req.IDs), count)
-		log.Println(msg)
-		http.Error(w, msg, http.StatusBadRequest)
-		return
-	}
-
-	log.Printf("Reordering %d channels...", count)
+	log.Printf("Reordering %d channels via SortOrder...", len(req.IDs))
 
 	tx := database.DB.Begin()
 	if tx.Error != nil {
@@ -86,89 +77,14 @@ func HandleChannelReorder(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	// 1. Store current associations in memory
-	var zoneChannels []models.ZoneChannel
-	if err := tx.Find(&zoneChannels).Error; err != nil {
-		tx.Rollback()
-		http.Error(w, "Failed to read zone associations", http.StatusInternalServerError)
-		return
-	}
-
-	var scanListChannels []models.ScanListChannel
-	if err := tx.Find(&scanListChannels).Error; err != nil {
-		tx.Rollback()
-		http.Error(w, "Failed to read scanlist associations", http.StatusInternalServerError)
-		return
-	}
-
-	// 2. Clear association tables to remove FK constraints
-	if err := tx.Exec("DELETE FROM zone_channels").Error; err != nil {
-		tx.Rollback()
-		http.Error(w, "Failed to clear zone_channels", http.StatusInternalServerError)
-		return
-	}
-	if err := tx.Exec("DELETE FROM scan_list_channels").Error; err != nil {
-		tx.Rollback()
-		http.Error(w, "Failed to clear scan_list_channels", http.StatusInternalServerError)
-		return
-	}
-
-	// 3. Perform the ID shuffle in-place
-	const tempOffset = 1000000
-	idMap := make(map[uint]uint)
-
-	// 3a. Shift all channel IDs to a temporary high range
-	if err := tx.Exec("UPDATE channels SET id = id + ?", tempOffset).Error; err != nil {
-		tx.Rollback()
-		http.Error(w, "Failed to shift channel IDs to temp range", http.StatusInternalServerError)
-		return
-	}
-
-	// 3b. Update channels from their temp ID to the new final ID
-	for i, oldID := range req.IDs {
-		newID := uint(i + 1)
-		tempID := oldID + tempOffset
-		idMap[oldID] = newID
-
-		if err := tx.Exec("UPDATE channels SET id = ? WHERE id = ?", newID, tempID).Error; err != nil {
+	// Update SortOrder for each ID
+	for i, id := range req.IDs {
+		// i is 0-based index, we can use it directly as order (or i+1)
+		// Batch update is efficient, but simple iteration is fine for SQLite.
+		if err := tx.Model(&models.Channel{}).Where("id = ?", id).Update("sort_order", i+1).Error; err != nil {
 			tx.Rollback()
-			log.Printf("Error restoring channel ID %d (temp %d) to %d: %v", oldID, tempID, newID, err)
-			http.Error(w, "Failed to update channel to new ID", http.StatusInternalServerError)
-			return
-		}
-	}
-
-	// 4. Re-create associations
-	newZoneChannels := make([]models.ZoneChannel, 0, len(zoneChannels))
-	for _, zc := range zoneChannels {
-		if newChanID, ok := idMap[zc.ChannelID]; ok {
-			newZoneChannels = append(newZoneChannels, models.ZoneChannel{
-				ZoneID:    zc.ZoneID,
-				ChannelID: newChanID,
-			})
-		}
-	}
-	if len(newZoneChannels) > 0 {
-		if err := tx.Create(&newZoneChannels).Error; err != nil {
-			tx.Rollback()
-			http.Error(w, "Failed to restore zone associations", http.StatusInternalServerError)
-			return
-		}
-	}
-
-	newScanListChannels := make([]models.ScanListChannel, 0, len(scanListChannels))
-	for _, slc := range scanListChannels {
-		if newChanID, ok := idMap[slc.ChannelID]; ok {
-			newScanListChannels = append(newScanListChannels, models.ScanListChannel{
-				ScanListID: slc.ScanListID,
-				ChannelID:  newChanID,
-			})
-		}
-	}
-	if len(newScanListChannels) > 0 {
-		if err := tx.Create(&newScanListChannels).Error; err != nil {
-			tx.Rollback()
-			http.Error(w, "Failed to restore scanlist associations", http.StatusInternalServerError)
+			log.Printf("Error updating SortOrder for channel %d: %v", id, err)
+			http.Error(w, "Failed to update channel order", http.StatusInternalServerError)
 			return
 		}
 	}
@@ -978,16 +894,34 @@ func HandleZones(w http.ResponseWriter, r *http.Request) {
 		id := r.URL.Query().Get("id")
 		if id != "" {
 			var zone models.Zone
-			if err := database.DB.Preload("Channels").First(&zone, id).Error; err != nil {
+			// Preload via ZoneChannels to guarantee order
+			if err := database.DB.Preload("ZoneChannels", func(db *gorm.DB) *gorm.DB {
+				return db.Order("sort_order ASC")
+			}).Preload("ZoneChannels.Channel").First(&zone, id).Error; err != nil {
 				http.Error(w, "Zone not found", http.StatusNotFound)
 				return
+			}
+			// Map ZoneChannels back to Channels for JSON compatibility (or use ZoneChannels in frontend?)
+			// Maintaining compatibility with Channels field in JSON:
+			zone.Channels = make([]models.Channel, len(zone.ZoneChannels))
+			for i, zc := range zone.ZoneChannels {
+				zone.Channels[i] = zc.Channel
 			}
 			json.NewEncoder(w).Encode(zone)
 			return
 		}
 
 		var zones []models.Zone
-		database.DB.Preload("Channels").Find(&zones)
+		database.DB.Preload("ZoneChannels", func(db *gorm.DB) *gorm.DB {
+			return db.Order("sort_order ASC")
+		}).Preload("ZoneChannels.Channel").Find(&zones)
+
+		for i := range zones {
+			zones[i].Channels = make([]models.Channel, len(zones[i].ZoneChannels))
+			for j, zc := range zones[i].ZoneChannels {
+				zones[i].Channels[j] = zc.Channel
+			}
+		}
 		json.NewEncoder(w).Encode(zones)
 	case "POST":
 		var z models.Zone
@@ -1026,6 +960,7 @@ func HandleZoneAssignment(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Zone ID required", http.StatusBadRequest)
 		return
 	}
+	zoneID, _ := strconv.Atoi(id)
 
 	var channelIDs []int
 	if err := json.NewDecoder(r.Body).Decode(&channelIDs); err != nil {
@@ -1033,32 +968,42 @@ func HandleZoneAssignment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var zone models.Zone
-	if err := database.DB.First(&zone, id).Error; err != nil {
-		http.Error(w, "Zone not found", http.StatusNotFound)
+	// Manual transaction to update zone_channels with order
+	tx := database.DB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 1. Clear existing
+	if err := tx.Exec("DELETE FROM zone_channels WHERE zone_id = ?", zoneID).Error; err != nil {
+		tx.Rollback()
+		http.Error(w, "Failed to clear existing", http.StatusInternalServerError)
 		return
 	}
 
-	var channels []models.Channel
+	// 2. Insert new with order
+	// Batch insert not easily done via GORM Association mode with custom join fields unless we use SetupJoinTable + Create on the Join Model directly.
 	if len(channelIDs) > 0 {
-		database.DB.Find(&channels, channelIDs)
-	}
-
-	database.DB.Model(&zone).Association("Channels").Clear()
-
-	sortedChannels := make([]models.Channel, 0, len(channels))
-	chanMap := make(map[int]models.Channel)
-	for _, c := range channels {
-		chanMap[int(c.ID)] = c
-	}
-	for _, id := range channelIDs {
-		if c, ok := chanMap[id]; ok {
-			sortedChannels = append(sortedChannels, c)
+		var zcs []models.ZoneChannel
+		for i, cid := range channelIDs {
+			zcs = append(zcs, models.ZoneChannel{
+				ZoneID:    uint(zoneID),
+				ChannelID: uint(cid),
+				SortOrder: i + 1,
+			})
+		}
+		if err := tx.Create(&zcs).Error; err != nil {
+			tx.Rollback()
+			http.Error(w, "Failed to assign channels", http.StatusInternalServerError)
+			return
 		}
 	}
 
-	if len(sortedChannels) > 0 {
-		database.DB.Model(&zone).Association("Channels").Append(sortedChannels)
+	if err := tx.Commit().Error; err != nil {
+		http.Error(w, "Commit failed", http.StatusInternalServerError)
+		return
 	}
 
 	w.WriteHeader(http.StatusOK)
