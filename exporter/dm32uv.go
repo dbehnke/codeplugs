@@ -72,6 +72,45 @@ func ExportDM32UV(db *gorm.DB, outputDir string) error {
 		return err
 	}
 
+	f5, err := os.Create(filepath.Join(outputDir, "scan_lists.csv"))
+	if err != nil {
+		return err
+	}
+	defer f5.Close()
+	var scanLists []models.ScanList
+	if err := db.Preload("Channels").Find(&scanLists).Error; err != nil {
+		return err
+	}
+	if err := ExportDM32UVScanLists(scanLists, f5); err != nil {
+		return err
+	}
+
+	f6, err := os.Create(filepath.Join(outputDir, "roaming_channels.csv"))
+	if err != nil {
+		return err
+	}
+	defer f6.Close()
+	var roamChans []models.RoamingChannel
+	if err := db.Find(&roamChans).Error; err != nil {
+		return err
+	}
+	if err := ExportDM32UVRoamingChannels(roamChans, f6); err != nil {
+		return err
+	}
+
+	f7, err := os.Create(filepath.Join(outputDir, "roaming_zones.csv"))
+	if err != nil {
+		return err
+	}
+	defer f7.Close()
+	var roamZones []models.RoamingZone
+	if err := db.Preload("Channels").Find(&roamZones).Error; err != nil {
+		return err
+	}
+	if err := ExportDM32UVRoamingZones(roamZones, f7); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -185,9 +224,10 @@ func ExportDM32UVTalkgroups(contacts []models.Contact, w io.Writer) error {
 
 	for i, c := range contacts {
 		cType := "Group Call"
-		if c.Type == models.ContactTypePrivate {
+		switch c.Type {
+		case models.ContactTypePrivate:
 			cType = "Private Call"
-		} else if c.Type == models.ContactTypeAllCall {
+		case models.ContactTypeAllCall:
 			cType = "All Call"
 		}
 		writer.Write([]string{strconv.Itoa(i + 1), c.Name, strconv.Itoa(c.DMRID), cType})
@@ -236,6 +276,57 @@ func ExportDM32UVDigitalContacts(contacts []models.DigitalContact, w io.Writer) 
 			"Private Call",
 			"0",
 		})
+	}
+	return nil
+}
+
+func ExportDM32UVScanLists(lists []models.ScanList, w io.Writer) error {
+	writer := csv.NewWriter(w)
+	defer writer.Flush()
+
+	writer.Write([]string{"No.", "Scan List Name", "Scan Channel Member"})
+
+	for i, l := range lists {
+		var chanNames []string
+		for _, c := range l.Channels {
+			chanNames = append(chanNames, c.Name)
+		}
+		writer.Write([]string{strconv.Itoa(i + 1), l.Name, strings.Join(chanNames, "|")})
+	}
+	return nil
+}
+
+func ExportDM32UVRoamingChannels(channels []models.RoamingChannel, w io.Writer) error {
+	writer := csv.NewWriter(w)
+	defer writer.Flush()
+
+	writer.Write([]string{"No.", "Channel Name", "RX Frequency", "TX Frequency", "Color Code", "Time Slot"})
+
+	for i, c := range channels {
+		writer.Write([]string{
+			strconv.Itoa(i + 1),
+			c.Name,
+			fmt.Sprintf("%.5f", c.RxFrequency),
+			fmt.Sprintf("%.5f", c.TxFrequency),
+			strconv.Itoa(c.ColorCode),
+			strconv.Itoa(c.TimeSlot),
+		})
+	}
+	return nil
+}
+
+func ExportDM32UVRoamingZones(zones []models.RoamingZone, w io.Writer) error {
+	writer := csv.NewWriter(w)
+	defer writer.Flush()
+
+	writer.Write([]string{"No.", "Zone Name", "Channel Members"})
+
+	for i, z := range zones {
+		var chanNames []string
+		for _, c := range z.Channels {
+			chanNames = append(chanNames, c.Name)
+		}
+		writer.Write([]string{strconv.Itoa(i + 1), z.Name, strings.Join(chanNames, "|")})
 	}
 	return nil
 }

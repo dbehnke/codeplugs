@@ -32,7 +32,7 @@ func Connect(dbPath string) {
 	DB.SetupJoinTable(&models.ScanList{}, "Channels", &models.ScanListChannel{})
 
 	// Auto Migrate
-	err = DB.AutoMigrate(&models.Channel{}, &models.Contact{}, &models.Zone{}, &models.DigitalContact{}, &models.ZoneChannel{}, &models.ScanList{}, &models.ScanListChannel{}, &models.ContactList{}, &models.ContactListEntry{})
+	err = DB.AutoMigrate(&models.Channel{}, &models.Contact{}, &models.Zone{}, &models.DigitalContact{}, &models.ZoneChannel{}, &models.ScanList{}, &models.ScanListChannel{}, &models.ContactList{}, &models.ContactListEntry{}, &models.RoamingChannel{}, &models.RoamingZone{})
 	if err != nil {
 		log.Fatal("Failed to migrate database:", err)
 	}

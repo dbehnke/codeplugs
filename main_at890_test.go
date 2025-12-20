@@ -26,7 +26,16 @@ func TestHandleExport_AnyTone890(t *testing.T) {
 		t.Fatalf("Failed to open db: %v", err)
 	}
 	database.DB = db
-	db.AutoMigrate(&models.Channel{}, &models.Contact{}, &models.Zone{}, &models.ZoneChannel{}, &models.DigitalContact{})
+	db.AutoMigrate(
+		&models.Channel{},
+		&models.Contact{},
+		&models.Zone{},
+		&models.ZoneChannel{},
+		&models.DigitalContact{},
+		&models.ScanList{},
+		&models.RoamingChannel{},
+		&models.RoamingZone{},
+	)
 
 	// Seed Data
 	db.Create(&models.Channel{Name: "TestChan", RxFrequency: 146.520, TxFrequency: 146.520, Type: models.ChannelTypeAnalog})

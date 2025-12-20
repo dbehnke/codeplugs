@@ -8,73 +8,73 @@ import (
 
 type Channel struct {
 	gorm.Model
-	Name         string
-	SortOrder    int `gorm:"default:0"`
-	RxFrequency  float64
-	TxFrequency  float64
-	Mode         string // FM, DMR, C4FM, D-Star
-	Power        string // High, Mid, Low
-	Bandwidth    string // 12.5, 25
-	ColorCode    int    // For DMR
-	TimeSlot     int    // For DMR
-	Tone         string // e.g., "88.5", "D023N"
-	RepeaterSlot int    // For D-Star
-	RxGroup      string // DMR Rx Group List
-	TxContact    string // DMR Tx Contact
-	Notes        string
-	Skip         bool `gorm:"default:false"`
+	Name         string  `json:"name"`
+	SortOrder    int     `gorm:"default:0" json:"sort_order"`
+	RxFrequency  float64 `json:"rx_frequency"`
+	TxFrequency  float64 `json:"tx_frequency"`
+	Mode         string  `json:"mode"`          // FM, DMR, C4FM, D-Star
+	Power        string  `json:"power"`         // High, Mid, Low
+	Bandwidth    string  `json:"bandwidth"`     // 12.5, 25
+	ColorCode    int     `json:"color_code"`    // For DMR
+	TimeSlot     int     `json:"time_slot"`     // For DMR
+	Tone         string  `json:"tone"`          // e.g., "88.5", "D023N"
+	RepeaterSlot int     `json:"repeater_slot"` // For D-Star
+	RxGroup      string  `json:"rx_group"`      // DMR Rx Group List
+	TxContact    string  `json:"tx_contact"`    // DMR Tx Contact
+	Notes        string  `json:"notes"`
+	Skip         bool    `gorm:"default:false" json:"skip"`
 
 	// Squelch / Tone Fields
-	SquelchType string // None, Tone, TSQL, DCS
-	RxTone      string // CTCSS for RX (e.g. "88.5")
-	TxTone      string // CTCSS for TX (e.g. "88.5")
-	RxDCS       string // DCS for RX (e.g. "023N")
-	TxDCS       string // DCS for TX (e.g. "023N")
+	SquelchType string `json:"squelch_type"` // None, Tone, TSQL, DCS
+	RxTone      string `json:"rx_tone"`      // CTCSS for RX (e.g. "88.5")
+	TxTone      string `json:"tx_tone"`      // CTCSS for TX (e.g. "88.5")
+	RxDCS       string `json:"rx_dcs"`       // DCS for RX (e.g. "023N")
+	TxDCS       string `json:"tx_dcs"`       // DCS for TX (e.g. "023N")
 
 	// Enhanced Fields
-	Type     ChannelType // Analog, Digital, Mixed
-	Protocol Protocol    // FM, DMR, Fusion, etc.
+	Type     ChannelType `json:"type"`     // Analog, Digital, Mixed
+	Protocol Protocol    `json:"protocol"` // FM, DMR, Fusion, etc.
 
 	// DM32UV & AnyTone 890 Specific Fields
-	SquelchLevel       int // DM32UV
-	AprsReportType     string
-	ForbidTx           bool
-	AprsReceive        bool
-	ForbidTalkaround   bool
-	AutoScan           bool
-	LoneWork           bool
-	EmergencyIndicator bool
-	EmergencyAck       bool
-	AnalogAprsPttMode  int
-	DigitalAprsPttMode int
-	Encryption         string
-	EncryptionID       int
-	DirectDualMode     bool
-	PrivateConfirm     bool
-	ShortDataConfirm   bool
-	SignalingType      string
-	PttId              string
-	VoxFunction        bool
-	PttIdDisplay       bool
-	EmergencySystem    string
-	AprsReportChannel  int
-	CtcDcsDecode       string
-	CtcDcsEncode       string
-	Scramble           string
-	RxSquelchMode      string
+	SquelchLevel       int    `json:"squelch_level"` // DM32UV
+	AprsReportType     string `json:"aprs_report_type"`
+	ForbidTx           bool   `json:"forbid_tx"`
+	AprsReceive        bool   `json:"aprs_receive"`
+	ForbidTalkaround   bool   `json:"forbid_talkaround"`
+	AutoScan           bool   `json:"auto_scan"`
+	LoneWork           bool   `json:"lone_work"`
+	EmergencyIndicator bool   `json:"emergency_indicator"`
+	EmergencyAck       bool   `json:"emergency_ack"`
+	AnalogAprsPttMode  int    `json:"analog_aprs_ptt_mode"`
+	DigitalAprsPttMode int    `json:"digital_aprs_ptt_mode"`
+	Encryption         string `json:"encryption"`
+	EncryptionID       int    `json:"encryption_id"`
+	DirectDualMode     bool   `json:"direct_dual_mode"`
+	PrivateConfirm     bool   `json:"private_confirm"`
+	ShortDataConfirm   bool   `json:"short_data_confirm"`
+	SignalingType      string `json:"signaling_type"`
+	PttId              string `json:"ptt_id"`
+	VoxFunction        bool   `json:"vox_function"`
+	PttIdDisplay       bool   `json:"ptt_id_display"`
+	EmergencySystem    string `json:"emergency_system"`
+	AprsReportChannel  int    `json:"aprs_report_channel"`
+	CtcDcsDecode       string `json:"ctc_dcs_decode"`
+	CtcDcsEncode       string `json:"ctc_dcs_encode"`
+	Scramble           string `json:"scramble"`
+	RxSquelchMode      string `json:"rx_squelch_mode"`
 	// AnyTone 890
-	TxPermit       string
-	OptionalSignal string
-	DtmfID         string
-	Tone2ID        string
-	Tone5ID        string
-	ScanList       string
-	TalkAround     bool
-	WorkAlone      bool // Similar to LoneWork, but keeping separate to match CSVs for now if needed, or map later.
+	TxPermit       string `json:"tx_permit"`
+	OptionalSignal string `json:"optional_signal"`
+	DtmfID         string `json:"dtmf_id"`
+	Tone2ID        string `json:"tone2_id"`
+	Tone5ID        string `json:"tone5_id"`
+	ScanList       string `json:"scan_list"`
+	TalkAround     bool   `json:"talk_around"`
+	WorkAlone      bool   `json:"work_alone"` // Similar to LoneWork, but keeping separate to match CSVs for now if needed, or map later.
 
 	// DMR Specific FK
-	ContactID *uint
-	Contact   *Contact `gorm:"foreignKey:ContactID"`
+	ContactID *uint    `json:"contact_id"`
+	Contact   *Contact `gorm:"foreignKey:ContactID" json:"contact"`
 }
 
 type ChannelType string

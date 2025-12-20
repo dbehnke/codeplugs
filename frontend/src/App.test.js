@@ -1,9 +1,27 @@
-import { mount } from '@vue/test-utils'
-import { describe, it, expect, vi } from 'vitest'
+import { mount, flushPromises } from '@vue/test-utils'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import App from './App.vue'
+import { createRouter, createWebHistory } from 'vue-router'
+import { createPinia, setActivePinia } from 'pinia'
+
+// Mock Sidebar and RouterView components to avoid deep dependencies
+vi.mock('./components/Sidebar.vue', () => ({
+    default: {
+        template: '<div id="sidebar"><button>Digital Contact List</button></div>'
+    }
+}))
+
+const router = createRouter({
+    history: createWebHistory(),
+    routes: [{ path: '/', component: { template: '<div>Dashboard</div>' } }]
+})
 
 describe('App', () => {
-    it('renders "No digital contact list found" when database is empty', async () => {
+    beforeEach(() => {
+        setActivePinia(createPinia())
+    })
+
+    it('renders sidebar and transition area', async () => {
         // Mock WebSocket
         global.WebSocket = class {
             constructor() {
@@ -14,37 +32,17 @@ describe('App', () => {
             }
         }
 
-        // Mock fetch to return empty data
-        global.fetch = vi.fn((url) => {
-            if (url.includes('/api/contacts')) {
-                return Promise.resolve({
-                    json: () => Promise.resolve({ data: [], meta: { total: 0 } })
-                })
+        const wrapper = mount(App, {
+            global: {
+                plugins: [router]
             }
-            if (url.includes('/api/channels')) {
-                return Promise.resolve({
-                    json: () => Promise.resolve([])
-                })
-            }
-            if (url.includes('/api/zones')) {
-                return Promise.resolve({
-                    json: () => Promise.resolve([])
-                })
-            }
-            return Promise.resolve({ json: () => Promise.resolve({}) })
         })
 
-        const wrapper = mount(App)
+        await router.push('/')
+        await router.isReady()
+        await flushPromises()
 
-        // Wait for onMounted
-        await new Promise(resolve => setTimeout(resolve, 100))
-
-        // Switch to Digital Contact List tab
-        const buttons = wrapper.findAll('button')
-        const digitalTab = buttons.find(b => b.text().includes('Digital Contact List'))
-        await digitalTab.trigger('click')
-
-        // Check for empty state message
-        expect(wrapper.text()).toContain('No digital contact list found')
+        expect(wrapper.find('#sidebar').exists()).toBe(true)
+        expect(wrapper.text()).toContain('Dashboard')
     })
 })

@@ -36,12 +36,29 @@ Code Review Summary
     *   Improved `ResolveContacts` to use strict case-insensitive trimming for name matching.
     *   Implemented auto-creation of missing contacts with temporary negative DMR IDs to avoid unique constraint violations.
 
-#### Phase 3: Feature Enhancements
-*   **Expand Radio Support**:
-    *   Complete AnyTone 890 support (ensure all fields are mapped).
-    *   Add initial support for Yaesu System Fusion (YSF/C4FM) as requested in `GEMINI.md`.
-*   **API Improvements**: Standardize API responses and error handling to better support the React frontend.
+#### Phase 3: Feature Enhancements & API Standardization (COMPLETED)
+*   **AnyTone 890 & DM32UV Completion**:
+    *   **Scan Lists**: Implemented Import/Export for `ScanList.CSV` (AnyTone) and `scan_lists.csv` (DM32UV) and linked channels.
+    *   **Roaming Support**: Implemented `RoamingChannel` and `RoamingZone` models and CSV parsing/exporting for both platforms.
+*   **API Standardization**:
+    *   Refactored HTTP API to use a consistent JSON response wrapper (`{ success: true, data: ..., error: ... }`).
+    *   Centralized error handling with `api.RespondError` and success with `api.RespondJSON`.
 
-#### Phase 4: Testing (TDD)
-*   Write failing tests for the new `SortOrder` logic and zone management before implementation.
-*   Ensure high coverage for the refactored API handlers.
+#### Phase 4: Ongoing Testing (TDD) (Active)
+*   Write failing tests for new features (Scan Lists, Roaming, API wrappers) before implementation.
+*   Maintain high coverage for all new logic.
+
+#### Phase 5: API & Integration (COMPLETED)
+*   **Roaming & Scan List API**:
+    *   Implemented `HandleRoamingChannels` (GET/POST/DELETE) with JSON tag fixes.
+    *   Implemented `HandleRoamingZones` (GET/POST/DELETE).
+    *   Implemented `HandleRoamingAssignment` (POST) to assign channels to roaming zones.
+    *   Implemented `HandleScanLists` (GET/POST/DELETE).
+*   **Import Logic Upgrade**:
+    *   Updated `HandleImport` to support ZIP uploads containing `ScanList.CSV`, `RoamChannel.CSV`, and `RoamZone.CSV` (AnyTone structure) and their DM32UV equivalents (`scan_lists.csv`, `roaming_channels.csv`, `roaming_zones.csv`).
+    *   Verified with `TestHandleImport_Zip_RoamingScanList`.
+*   **Web UI Readiness**:
+    *   Backend endpoints are now fully implemented and tested for future UI integration.
+
+> [!NOTE]
+> **Out of Scope**: Yaesu System Fusion (YSF) support is explicitly excluded from this project plan at this time.

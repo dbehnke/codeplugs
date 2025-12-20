@@ -56,11 +56,27 @@ export interface ScanList {
     Channels: Channel[]
 }
 
+export interface RoamingChannel {
+    ID: number
+    Name: string
+    RxFrequency: number
+    ColorCode: number
+    TimeSlot: number
+}
+
+export interface RoamingZone {
+    ID: number
+    Name: string
+    Channels: RoamingChannel[]
+}
+
 export const useCodeplugStore = defineStore('codeplug', () => {
     // State
     const channels = ref<Channel[]>([])
     const zones = ref<Zone[]>([])
     const scanlists = ref<ScanList[]>([])
+    const roamingChannels = ref<RoamingChannel[]>([])
+    const roamingZones = ref<RoamingZone[]>([])
     const talkgroups = ref<Contact[]>([]) // User contacts
     const dmrContacts = ref<Contact[]>([]) // RadioID contacts
 
@@ -68,6 +84,8 @@ export const useCodeplugStore = defineStore('codeplug', () => {
     const loadingChannels = ref(false)
     const loadingZones = ref(false)
     const loadingScanLists = ref(false)
+    const loadingRoamingChannels = ref(false)
+    const loadingRoamingZones = ref(false)
     const loadingTalkgroups = ref(false)
     const loadingDMRContacts = ref(false)
 
@@ -100,11 +118,38 @@ export const useCodeplugStore = defineStore('codeplug', () => {
         loadingScanLists.value = true
         try {
             const res = await fetch('/api/scanlists')
-            scanlists.value = await res.json()
+            const data = await res.json()
+            scanlists.value = data.data || data // Handle both wrapper and direct array
         } catch (e) {
             console.error("Failed to fetch scan lists", e)
         } finally {
             loadingScanLists.value = false
+        }
+    }
+
+    async function fetchRoamingChannels() {
+        loadingRoamingChannels.value = true
+        try {
+            const res = await fetch('/api/roaming/channels')
+            const data = await res.json()
+            roamingChannels.value = data.data || []
+        } catch (e) {
+            console.error("Failed to fetch roaming channels", e)
+        } finally {
+            loadingRoamingChannels.value = false
+        }
+    }
+
+    async function fetchRoamingZones() {
+        loadingRoamingZones.value = true
+        try {
+            const res = await fetch('/api/roaming/zones')
+            const data = await res.json()
+            roamingZones.value = data.data || []
+        } catch (e) {
+            console.error("Failed to fetch roaming zones", e)
+        } finally {
+            loadingRoamingZones.value = false
         }
     }
 
@@ -224,16 +269,22 @@ export const useCodeplugStore = defineStore('codeplug', () => {
         channels,
         zones,
         scanlists,
+        roamingChannels,
+        roamingZones,
         talkgroups,
         dmrContacts,
         loadingChannels,
         loadingZones,
         loadingScanLists,
+        loadingRoamingChannels,
+        loadingRoamingZones,
         loadingTalkgroups,
         loadingDMRContacts,
         fetchChannels,
         fetchZones,
         fetchScanLists,
+        fetchRoamingChannels,
+        fetchRoamingZones,
         fetchTalkgroups,
         fetchDMRContacts,
         deleteChannel,

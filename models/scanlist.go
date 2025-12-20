@@ -4,8 +4,8 @@ import "gorm.io/gorm"
 
 type ScanList struct {
 	gorm.Model
-	Name     string
-	Channels []Channel `gorm:"many2many:scan_list_channels;"`
+	Name     string    `json:"name"`
+	Channels []Channel `gorm:"many2many:scan_list_channels;" json:"channels"`
 }
 
 type ScanListChannel struct {

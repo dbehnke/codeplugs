@@ -31,7 +31,8 @@ const sections = ref([
       { name: 'Channel', path: '/channels' },
       { name: 'Zone', path: '/zones' },
       { name: 'Scan List', path: '/scanlists' },
-      { name: 'Roaming Channel', path: '#' }, // Placeholder
+      { name: 'Roaming Channel', path: '/roaming/channels' },
+      { name: 'Roaming Zone', path: '/roaming/zones' },
     ]
   },
   {

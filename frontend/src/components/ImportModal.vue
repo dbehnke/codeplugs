@@ -225,10 +225,12 @@ const connectWS = () => {
     
     socket.onmessage = (event) => {
         try {
-            const data = JSON.parse(event.data)
-            // Expecting format: { total, processed, status, message }
-            if (typeof data.processed === 'number') {
-                progress.value = data
+            const msg = JSON.parse(event.data)
+            if (msg.type === 'import_progress' && msg.data) {
+                progress.value = msg.data
+            } else if (typeof msg.processed === 'number') {
+                // Fallback for direct messages if any
+                progress.value = msg
             }
         } catch (e) {
             // Ignore non-json messages

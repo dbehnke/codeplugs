@@ -4,6 +4,8 @@ import { createRouter, createWebHistory } from 'vue-router'
 import ChannelsView from '../views/ChannelsView.vue'
 import ZonesView from '../views/ZonesView.vue'
 import ScanListView from '../views/ScanListView.vue'
+import RoamingChannelsView from '../views/RoamingChannelsView.vue'
+import RoamingZonesView from '../views/RoamingZonesView.vue'
 import DMRTalkgroupsView from '../views/DMRTalkgroupsView.vue'
 import DMRContactsView from '../views/DMRContactsView.vue'
 import NXDNTalkgroupsView from '../views/NXDNTalkgroupsView.vue'
@@ -31,6 +33,16 @@ const router = createRouter({
             path: '/scanlists',
             name: 'scanlists',
             component: ScanListView
+        },
+        {
+            path: '/roaming/channels',
+            name: 'roaming-channels',
+            component: RoamingChannelsView
+        },
+        {
+            path: '/roaming/zones',
+            name: 'roaming-zones',
+            component: RoamingZonesView
         },
         {
             path: '/dmr-talkgroups',

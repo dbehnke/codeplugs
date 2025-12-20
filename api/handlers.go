@@ -28,11 +28,11 @@ func HandleChannels(w http.ResponseWriter, r *http.Request) {
 	case "GET":
 		var channels []models.Channel
 		database.DB.Order("sort_order asc").Find(&channels)
-		json.NewEncoder(w).Encode(channels)
+		RespondJSON(w, channels)
 	case "POST":
 		var ch models.Channel
 		if err := json.NewDecoder(r.Body).Decode(&ch); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			RespondError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 		if ch.ID == 0 {
@@ -40,19 +40,19 @@ func HandleChannels(w http.ResponseWriter, r *http.Request) {
 		} else {
 			database.DB.Save(&ch)
 		}
-		json.NewEncoder(w).Encode(ch)
+		RespondJSON(w, ch)
 	case "DELETE":
 		id := r.URL.Query().Get("id")
 		if id != "" {
 			database.DB.Delete(&models.Channel{}, id)
-			w.WriteHeader(http.StatusOK)
+			RespondJSON(w, nil)
 		}
 	}
 }
 
 func HandleChannelReorder(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
@@ -60,7 +60,7 @@ func HandleChannelReorder(w http.ResponseWriter, r *http.Request) {
 		IDs []uint `json:"ids"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		RespondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -68,7 +68,7 @@ func HandleChannelReorder(w http.ResponseWriter, r *http.Request) {
 
 	tx := database.DB.Begin()
 	if tx.Error != nil {
-		http.Error(w, "Failed to begin transaction", http.StatusInternalServerError)
+		RespondError(w, http.StatusInternalServerError, "Failed to begin transaction")
 		return
 	}
 	defer func() {
@@ -84,22 +84,22 @@ func HandleChannelReorder(w http.ResponseWriter, r *http.Request) {
 		if err := tx.Model(&models.Channel{}).Where("id = ?", id).Update("sort_order", i+1).Error; err != nil {
 			tx.Rollback()
 			log.Printf("Error updating SortOrder for channel %d: %v", id, err)
-			http.Error(w, "Failed to update channel order", http.StatusInternalServerError)
+			RespondError(w, http.StatusInternalServerError, "Failed to update channel order")
 			return
 		}
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		http.Error(w, "Transaction commit failed: "+err.Error(), http.StatusInternalServerError)
+		RespondError(w, http.StatusInternalServerError, "Transaction commit failed: "+err.Error())
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	RespondJSON(w, nil)
 }
 
 func HandleImport(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
@@ -127,7 +127,7 @@ func HandleImport(w http.ResponseWriter, r *http.Request) {
 
 			zipReader, err := zip.NewReader(bytesReader, int64(buf.Len()))
 			if err != nil {
-				http.Error(w, "Invalid zip file", http.StatusBadRequest)
+				RespondError(w, http.StatusBadRequest, "Invalid zip file")
 				return
 			}
 
@@ -136,51 +136,231 @@ func HandleImport(w http.ResponseWriter, r *http.Request) {
 				filesMap[f.Name] = f
 			}
 
+			// Initialize progress
+			targetFiles := []string{
+				"digital_contacts.csv", "talkgroups.csv", "channels.csv", "zones.csv",
+				"ScanList.CSV", "scan_lists.csv", "RoamChannel.CSV", "roaming_channels.csv",
+				"RoamZone.CSV", "roaming_zones.csv",
+			}
+			totalToProcess := 0
+			for _, tf := range targetFiles {
+				if _, ok := filesMap[tf]; ok {
+					totalToProcess++
+				}
+			}
+
+			CurrentProgress.mu.Lock()
+			CurrentProgress.Total = totalToProcess
+			CurrentProgress.Processed = 0
+			CurrentProgress.Status = "running"
+			CurrentProgress.Message = "Starting ZIP import..."
+			CurrentProgress.mu.Unlock()
+			BroadcastProgress()
+
+			processedCount := 0
+
 			if f, ok := filesMap["digital_contacts.csv"]; ok {
+				CurrentProgress.mu.Lock()
+				CurrentProgress.Message = "Importing digital contacts..."
+				CurrentProgress.mu.Unlock()
+				BroadcastProgress()
+
 				rc, _ := f.Open()
 				err := importer.ImportDM32UVDigitalContacts(database.DB, rc)
 				rc.Close()
 				if err != nil {
 					log.Printf("Error importing digital contacts: %v", err)
-					http.Error(w, fmt.Sprintf("Error importing digital contacts: %v", err), http.StatusBadRequest)
+					RespondError(w, http.StatusBadRequest, fmt.Sprintf("Error importing digital contacts: %v", err))
 					return
 				}
+				processedCount++
+				CurrentProgress.mu.Lock()
+				CurrentProgress.Processed = processedCount
+				CurrentProgress.mu.Unlock()
+				BroadcastProgress()
 			}
 
 			if f, ok := filesMap["talkgroups.csv"]; ok {
+				CurrentProgress.mu.Lock()
+				CurrentProgress.Message = "Importing talkgroups..."
+				CurrentProgress.mu.Unlock()
+				BroadcastProgress()
+
 				rc, _ := f.Open()
 				err := importer.ImportDM32UVTalkgroups(database.DB, rc)
 				rc.Close()
 				if err != nil {
 					log.Printf("Error importing talkgroups: %v", err)
-					http.Error(w, fmt.Sprintf("Error importing talkgroups: %v", err), http.StatusBadRequest)
+					RespondError(w, http.StatusBadRequest, fmt.Sprintf("Error importing talkgroups: %v", err))
 					return
 				}
+				processedCount++
+				CurrentProgress.mu.Lock()
+				CurrentProgress.Processed = processedCount
+				CurrentProgress.mu.Unlock()
+				BroadcastProgress()
 			}
 
 			if f, ok := filesMap["channels.csv"]; ok {
+				CurrentProgress.mu.Lock()
+				CurrentProgress.Message = "Importing channels..."
+				CurrentProgress.mu.Unlock()
+				BroadcastProgress()
+
 				rc, _ := f.Open()
 				err := importer.ImportDM32UVChannels(database.DB, rc)
 				rc.Close()
 				if err != nil {
 					log.Printf("Error importing channels: %v", err)
-					http.Error(w, fmt.Sprintf("Error importing channels: %v", err), http.StatusBadRequest)
+					RespondError(w, http.StatusBadRequest, fmt.Sprintf("Error importing channels: %v", err))
 					return
 				}
+				processedCount++
+				CurrentProgress.mu.Lock()
+				CurrentProgress.Processed = processedCount
+				CurrentProgress.mu.Unlock()
+				BroadcastProgress()
 			}
 
 			if f, ok := filesMap["zones.csv"]; ok {
+				CurrentProgress.mu.Lock()
+				CurrentProgress.Message = "Importing zones..."
+				CurrentProgress.mu.Unlock()
+				BroadcastProgress()
+
 				rc, _ := f.Open()
 				err := importer.ImportDM32UVZones(database.DB, rc)
 				rc.Close()
 				if err != nil {
 					log.Printf("Error importing zones: %v", err)
-					http.Error(w, fmt.Sprintf("Error importing zones: %v", err), http.StatusBadRequest)
+					RespondError(w, http.StatusBadRequest, fmt.Sprintf("Error importing zones: %v", err))
 					return
 				}
+				processedCount++
+				CurrentProgress.mu.Lock()
+				CurrentProgress.Processed = processedCount
+				CurrentProgress.mu.Unlock()
+				BroadcastProgress()
 			}
 
-			fmt.Fprintf(w, "Zip Import Complete")
+			// AnyTone 890 / DM32UV Scan Lists
+			if f, ok := filesMap["ScanList.CSV"]; ok {
+				CurrentProgress.mu.Lock()
+				CurrentProgress.Message = "Importing scan lists (AnyTone)..."
+				CurrentProgress.mu.Unlock()
+				BroadcastProgress()
+
+				rc, _ := f.Open()
+				err := importer.ImportAnyTone890ScanLists(database.DB, rc)
+				rc.Close()
+				if err != nil {
+					log.Printf("Error importing scan lists (AnyTone): %v", err)
+					RespondError(w, http.StatusBadRequest, fmt.Sprintf("Error importing scan lists: %v", err))
+					return
+				}
+				processedCount++
+			} else if f, ok := filesMap["scan_lists.csv"]; ok {
+				CurrentProgress.mu.Lock()
+				CurrentProgress.Message = "Importing scan lists (DM32UV)..."
+				CurrentProgress.mu.Unlock()
+				BroadcastProgress()
+
+				rc, _ := f.Open()
+				err := importer.ImportDM32UVScanLists(database.DB, rc)
+				rc.Close()
+				if err != nil {
+					log.Printf("Error importing scan lists (DM32UV): %v", err)
+					RespondError(w, http.StatusBadRequest, fmt.Sprintf("Error importing scan lists: %v", err))
+					return
+				}
+				processedCount++
+			}
+			CurrentProgress.mu.Lock()
+			CurrentProgress.Processed = processedCount
+			CurrentProgress.mu.Unlock()
+			BroadcastProgress()
+
+			// AnyTone 890 / DM32UV Roaming Channels
+			if f, ok := filesMap["RoamChannel.CSV"]; ok {
+				CurrentProgress.mu.Lock()
+				CurrentProgress.Message = "Importing roaming channels (AnyTone)..."
+				CurrentProgress.mu.Unlock()
+				BroadcastProgress()
+
+				rc, _ := f.Open()
+				err := importer.ImportAnyTone890RoamingChannels(database.DB, rc)
+				rc.Close()
+				if err != nil {
+					log.Printf("Error importing roaming channels (AnyTone): %v", err)
+					RespondError(w, http.StatusBadRequest, fmt.Sprintf("Error importing roaming channels: %v", err))
+					return
+				}
+				processedCount++
+			} else if f, ok := filesMap["roaming_channels.csv"]; ok {
+				CurrentProgress.mu.Lock()
+				CurrentProgress.Message = "Importing roaming channels (DM32UV)..."
+				CurrentProgress.mu.Unlock()
+				BroadcastProgress()
+
+				rc, _ := f.Open()
+				err := importer.ImportDM32UVRoamingChannels(database.DB, rc)
+				rc.Close()
+				if err != nil {
+					log.Printf("Error importing roaming channels (DM32UV): %v", err)
+					RespondError(w, http.StatusBadRequest, fmt.Sprintf("Error importing roaming channels: %v", err))
+					return
+				}
+				processedCount++
+			}
+			CurrentProgress.mu.Lock()
+			CurrentProgress.Processed = processedCount
+			CurrentProgress.mu.Unlock()
+			BroadcastProgress()
+
+			// AnyTone 890 / DM32UV Roaming Zones
+			if f, ok := filesMap["RoamZone.CSV"]; ok {
+				CurrentProgress.mu.Lock()
+				CurrentProgress.Message = "Importing roaming zones (AnyTone)..."
+				CurrentProgress.mu.Unlock()
+				BroadcastProgress()
+
+				rc, _ := f.Open()
+				err := importer.ImportAnyTone890RoamingZones(database.DB, rc)
+				rc.Close()
+				if err != nil {
+					log.Printf("Error importing roaming zones (AnyTone): %v", err)
+					RespondError(w, http.StatusBadRequest, fmt.Sprintf("Error importing roaming zones: %v", err))
+					return
+				}
+				processedCount++
+			} else if f, ok := filesMap["roaming_zones.csv"]; ok {
+				CurrentProgress.mu.Lock()
+				CurrentProgress.Message = "Importing roaming zones (DM32UV)..."
+				CurrentProgress.mu.Unlock()
+				BroadcastProgress()
+
+				rc, _ := f.Open()
+				err := importer.ImportDM32UVRoamingZones(database.DB, rc)
+				rc.Close()
+				if err != nil {
+					log.Printf("Error importing roaming zones (DM32UV): %v", err)
+					RespondError(w, http.StatusBadRequest, fmt.Sprintf("Error importing roaming zones: %v", err))
+					return
+				}
+				processedCount++
+			}
+			CurrentProgress.mu.Lock()
+			CurrentProgress.Processed = processedCount
+			CurrentProgress.mu.Unlock()
+			BroadcastProgress()
+
+			CurrentProgress.mu.Lock()
+			CurrentProgress.Status = "completed"
+			CurrentProgress.Message = "Zip Import Complete"
+			CurrentProgress.mu.Unlock()
+			BroadcastProgress()
+
+			RespondJSON(w, map[string]string{"message": "Zip Import Complete"})
 			return
 		}
 
@@ -194,7 +374,7 @@ func HandleImport(w http.ResponseWriter, r *http.Request) {
 
 			tempFile, err := os.CreateTemp("", "restore-*.db")
 			if err != nil {
-				http.Error(w, "Error creating temp file", http.StatusInternalServerError)
+				RespondError(w, http.StatusInternalServerError, "Error creating temp file")
 				return
 			}
 			tempName := tempFile.Name()
@@ -202,7 +382,7 @@ func HandleImport(w http.ResponseWriter, r *http.Request) {
 
 			if _, err := io.Copy(tempFile, file); err != nil {
 				tempFile.Close()
-				http.Error(w, "Error saving file", http.StatusInternalServerError)
+				RespondError(w, http.StatusInternalServerError, "Error saving file")
 				return
 			}
 			tempFile.Close()
@@ -219,8 +399,9 @@ func HandleImport(w http.ResponseWriter, r *http.Request) {
 
 			database.Connect(targetDB)
 
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			database.Connect(targetDB)
+
+			RespondJSON(w, map[string]interface{}{
 				"message": "Database restored successfully. Please refresh.",
 			})
 			return
@@ -235,14 +416,14 @@ func HandleImport(w http.ResponseWriter, r *http.Request) {
 
 		tempFile, err = os.CreateTemp("", "upload-*.csv")
 		if err != nil {
-			http.Error(w, "Error creating temp file", http.StatusInternalServerError)
+			RespondError(w, http.StatusInternalServerError, "Error creating temp file")
 			return
 		}
 		defer os.Remove(tempFile.Name())
 		defer tempFile.Close()
 
 		if _, err := io.Copy(tempFile, file); err != nil {
-			http.Error(w, "Error saving file", http.StatusInternalServerError)
+			RespondError(w, http.StatusInternalServerError, "Error saving file")
 			return
 		}
 		path = tempFile.Name()
@@ -270,7 +451,7 @@ func HandleImport(w http.ResponseWriter, r *http.Request) {
 		defer tempFile.Close()
 
 		if _, err := io.Copy(tempFile, file); err != nil {
-			http.Error(w, "Error saving file", http.StatusInternalServerError)
+			RespondError(w, http.StatusInternalServerError, "Error saving file")
 			return
 		}
 
@@ -430,8 +611,7 @@ func HandleImport(w http.ResponseWriter, r *http.Request) {
 		CurrentProgress.mu.Unlock()
 		BroadcastProgress()
 
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		RespondJSON(w, map[string]interface{}{
 			"message": fmt.Sprintf("Successfully imported %s", importType),
 			"count":   count,
 		})
@@ -550,8 +730,7 @@ func HandleImport(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		RespondJSON(w, map[string]interface{}{
 			"imported": len(contacts),
 			"skipped":  0,
 			"message":  fmt.Sprintf("Processed %d contacts successfully.", len(contacts)),
@@ -571,15 +750,14 @@ func HandleImport(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		RespondJSON(w, map[string]interface{}{
 			"message": fmt.Sprintf("Successfully imported filter list '%s'", listName),
 		})
 		return
 	}
 
 	if path == "" {
-		http.Error(w, "File is required for generic import", http.StatusBadRequest)
+		RespondError(w, http.StatusBadRequest, "File is required for generic import")
 		return
 	}
 
@@ -593,7 +771,7 @@ func HandleImport(w http.ResponseWriter, r *http.Request) {
 
 	f, err := os.Open(path)
 	if err != nil {
-		http.Error(w, "Error opening uploaded file", http.StatusInternalServerError)
+		RespondError(w, http.StatusInternalServerError, "Error opening uploaded file")
 		return
 	}
 	defer f.Close()
@@ -639,8 +817,7 @@ func HandleImport(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	RespondJSON(w, map[string]interface{}{
 		"imported": count,
 		"skipped":  skipped,
 	})
@@ -749,7 +926,7 @@ func HandleExport(w http.ResponseWriter, r *http.Request) {
 			defer os.RemoveAll(tempDir)
 
 			if err := exporter.ExportAnyTone890(database.DB, tempDir, filterListID); err != nil {
-				http.Error(w, "Failed to export 890", http.StatusInternalServerError)
+				RespondError(w, http.StatusInternalServerError, "Failed to export 890")
 				return
 			}
 
@@ -843,7 +1020,7 @@ func HandleContacts(w http.ResponseWriter, r *http.Request) {
 
 			db.Limit(limit).Offset(offset).Find(&contacts)
 
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			RespondJSON(w, map[string]interface{}{
 				"data": contacts,
 				"meta": map[string]interface{}{
 					"total": total,
@@ -857,14 +1034,14 @@ func HandleContacts(w http.ResponseWriter, r *http.Request) {
 		var contacts []models.Contact
 		database.DB.Find(&contacts)
 
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		RespondJSON(w, map[string]interface{}{
 			"data": contacts,
 		})
 
 	case "POST":
 		var c models.Contact
 		if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			RespondError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 		if c.ID == 0 {
@@ -872,18 +1049,18 @@ func HandleContacts(w http.ResponseWriter, r *http.Request) {
 		} else {
 			database.DB.Save(&c)
 		}
-		json.NewEncoder(w).Encode(c)
+		RespondJSON(w, c)
 	case "DELETE":
 		id := r.URL.Query().Get("id")
 		if id != "" {
 			var count int64
 			database.DB.Model(&models.Channel{}).Where("contact_id = ?", id).Count(&count)
 			if count > 0 {
-				http.Error(w, "Contact is in use by channels", http.StatusConflict)
+				RespondError(w, http.StatusConflict, "Contact is in use by channels")
 				return
 			}
 			database.DB.Delete(&models.Contact{}, id)
-			w.WriteHeader(http.StatusOK)
+			RespondJSON(w, nil)
 		}
 	}
 }
@@ -898,7 +1075,7 @@ func HandleZones(w http.ResponseWriter, r *http.Request) {
 			if err := database.DB.Preload("ZoneChannels", func(db *gorm.DB) *gorm.DB {
 				return db.Order("sort_order ASC")
 			}).Preload("ZoneChannels.Channel").First(&zone, id).Error; err != nil {
-				http.Error(w, "Zone not found", http.StatusNotFound)
+				RespondError(w, http.StatusNotFound, "Zone not found")
 				return
 			}
 			// Map ZoneChannels back to Channels for JSON compatibility (or use ZoneChannels in frontend?)
@@ -907,7 +1084,7 @@ func HandleZones(w http.ResponseWriter, r *http.Request) {
 			for i, zc := range zone.ZoneChannels {
 				zone.Channels[i] = zc.Channel
 			}
-			json.NewEncoder(w).Encode(zone)
+			RespondJSON(w, zone)
 			return
 		}
 
@@ -922,11 +1099,11 @@ func HandleZones(w http.ResponseWriter, r *http.Request) {
 				zones[i].Channels[j] = zc.Channel
 			}
 		}
-		json.NewEncoder(w).Encode(zones)
+		RespondJSON(w, zones)
 	case "POST":
 		var z models.Zone
 		if err := json.NewDecoder(r.Body).Decode(&z); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			RespondError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 
@@ -934,17 +1111,17 @@ func HandleZones(w http.ResponseWriter, r *http.Request) {
 			database.DB.Create(&z)
 		} else {
 			if err := database.DB.Model(&z).Where("id = ?", z.ID).Update("name", z.Name).Error; err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				RespondError(w, http.StatusInternalServerError, err.Error())
 				return
 			}
 		}
-		json.NewEncoder(w).Encode(z)
+		RespondJSON(w, z)
 	case "DELETE":
 		id := r.URL.Query().Get("id")
 		if id != "" {
 			database.DB.Exec("DELETE FROM zone_channels WHERE zone_id = ?", id)
 			database.DB.Delete(&models.Zone{}, id)
-			w.WriteHeader(http.StatusOK)
+			RespondJSON(w, nil)
 		}
 	}
 }
@@ -957,14 +1134,14 @@ func HandleZoneAssignment(w http.ResponseWriter, r *http.Request) {
 
 	id := r.URL.Query().Get("id")
 	if id == "" {
-		http.Error(w, "Zone ID required", http.StatusBadRequest)
+		RespondError(w, http.StatusBadRequest, "Zone ID required")
 		return
 	}
 	zoneID, _ := strconv.Atoi(id)
 
 	var channelIDs []int
 	if err := json.NewDecoder(r.Body).Decode(&channelIDs); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		RespondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -979,7 +1156,7 @@ func HandleZoneAssignment(w http.ResponseWriter, r *http.Request) {
 	// 1. Clear existing
 	if err := tx.Exec("DELETE FROM zone_channels WHERE zone_id = ?", zoneID).Error; err != nil {
 		tx.Rollback()
-		http.Error(w, "Failed to clear existing", http.StatusInternalServerError)
+		RespondError(w, http.StatusInternalServerError, "Failed to clear existing")
 		return
 	}
 
@@ -996,17 +1173,17 @@ func HandleZoneAssignment(w http.ResponseWriter, r *http.Request) {
 		}
 		if err := tx.Create(&zcs).Error; err != nil {
 			tx.Rollback()
-			http.Error(w, "Failed to assign channels", http.StatusInternalServerError)
+			RespondError(w, http.StatusInternalServerError, "Failed to assign channels")
 			return
 		}
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		http.Error(w, "Commit failed", http.StatusInternalServerError)
+		RespondError(w, http.StatusInternalServerError, "Commit failed")
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	RespondJSON(w, nil)
 }
 
 func HandleScanLists(w http.ResponseWriter, r *http.Request) {
@@ -1014,11 +1191,11 @@ func HandleScanLists(w http.ResponseWriter, r *http.Request) {
 	case "GET":
 		var lists []models.ScanList
 		database.DB.Preload("Channels").Find(&lists)
-		json.NewEncoder(w).Encode(lists)
+		RespondJSON(w, lists)
 	case "POST":
 		var list models.ScanList
 		if err := json.NewDecoder(r.Body).Decode(&list); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			RespondError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 		if list.ID == 0 {
@@ -1026,20 +1203,20 @@ func HandleScanLists(w http.ResponseWriter, r *http.Request) {
 		} else {
 			database.DB.Model(&list).Update("name", list.Name)
 		}
-		json.NewEncoder(w).Encode(list)
+		RespondJSON(w, list)
 	case "DELETE":
 		id := r.URL.Query().Get("id")
 		if id != "" {
 			database.DB.Exec("DELETE FROM scan_list_channels WHERE scan_list_id = ?", id)
 			database.DB.Delete(&models.ScanList{}, id)
-			w.WriteHeader(http.StatusOK)
+			RespondJSON(w, nil)
 		}
 	}
 }
 
 func HandleScanListAssignment(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
@@ -1049,13 +1226,13 @@ func HandleScanListAssignment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		RespondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	var list models.ScanList
 	if err := database.DB.First(&list, req.ScanListID).Error; err != nil {
-		http.Error(w, "Scan List not found", http.StatusNotFound)
+		RespondError(w, http.StatusNotFound, "Scan List not found")
 		return
 	}
 
@@ -1063,11 +1240,11 @@ func HandleScanListAssignment(w http.ResponseWriter, r *http.Request) {
 	database.DB.Find(&channels, req.ChannelIDs)
 
 	if err := database.DB.Model(&list).Association("Channels").Replace(&channels); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		RespondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	RespondJSON(w, nil)
 }
 
 func HandleFilterLists(w http.ResponseWriter, r *http.Request) {
@@ -1077,14 +1254,14 @@ func HandleFilterLists(w http.ResponseWriter, r *http.Request) {
 		if id != "" {
 			var list models.ContactList
 			if err := database.DB.First(&list, id).Error; err != nil {
-				http.Error(w, "List not found", http.StatusNotFound)
+				RespondError(w, http.StatusNotFound, "List not found")
 				return
 			}
 
 			if r.URL.Query().Get("mode") == "ids" {
 				var ids []int
 				database.DB.Model(&models.ContactListEntry{}).Where("contact_list_id = ?", list.ID).Pluck("dmr_id", &ids)
-				json.NewEncoder(w).Encode(ids)
+				RespondJSON(w, ids)
 				return
 			}
 
@@ -1111,7 +1288,7 @@ func HandleFilterLists(w http.ResponseWriter, r *http.Request) {
 			var entries []models.ContactListEntry
 			query.Limit(limit).Offset(offset).Find(&entries)
 
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			RespondJSON(w, map[string]interface{}{
 				"data": entries,
 				"meta": map[string]interface{}{
 					"total": total,
@@ -1124,6 +1301,117 @@ func HandleFilterLists(w http.ResponseWriter, r *http.Request) {
 
 		var lists []models.ContactList
 		database.DB.Find(&lists)
-		json.NewEncoder(w).Encode(lists)
 	}
+}
+
+func HandleRoamingChannels(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "GET":
+		var channels []models.RoamingChannel
+		database.DB.Find(&channels)
+		RespondJSON(w, channels)
+	case "POST":
+		var rc models.RoamingChannel
+		if err := json.NewDecoder(r.Body).Decode(&rc); err != nil {
+			RespondError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		if rc.ID == 0 {
+			database.DB.Create(&rc)
+		} else {
+			database.DB.Save(&rc)
+		}
+		RespondJSON(w, rc)
+	case "DELETE":
+		id := r.URL.Query().Get("id")
+		if id != "" {
+			database.DB.Delete(&models.RoamingChannel{}, id)
+			RespondJSON(w, nil)
+		}
+	}
+}
+
+func HandleRoamingZones(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "GET":
+		id := r.URL.Query().Get("id")
+		if id != "" {
+			var zone models.RoamingZone
+			if err := database.DB.Preload("Channels").First(&zone, id).Error; err != nil {
+				RespondError(w, http.StatusNotFound, "Roaming Zone not found")
+				return
+			}
+			RespondJSON(w, zone)
+			return
+		}
+
+		var zones []models.RoamingZone
+		database.DB.Preload("Channels").Find(&zones)
+		RespondJSON(w, zones)
+
+	case "POST":
+		var z models.RoamingZone
+		if err := json.NewDecoder(r.Body).Decode(&z); err != nil {
+			RespondError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		if z.ID == 0 {
+			database.DB.Create(&z)
+		} else {
+			if err := database.DB.Model(&z).Where("id = ?", z.ID).Update("name", z.Name).Error; err != nil {
+				RespondError(w, http.StatusInternalServerError, err.Error())
+				return
+			}
+		}
+		RespondJSON(w, z)
+
+	case "DELETE":
+		id := r.URL.Query().Get("id")
+		if id != "" {
+			var zone models.RoamingZone
+			if err := database.DB.First(&zone, id).Error; err == nil {
+				database.DB.Model(&zone).Association("Channels").Clear()
+			}
+			database.DB.Delete(&models.RoamingZone{}, id)
+			RespondJSON(w, nil)
+		}
+	}
+}
+
+func HandleRoamingZoneAssignment(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		RespondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	id := r.URL.Query().Get("id")
+	if id == "" {
+		RespondError(w, http.StatusBadRequest, "Roaming Zone ID required")
+		return
+	}
+
+	var channelIDs []uint
+	if err := json.NewDecoder(r.Body).Decode(&channelIDs); err != nil {
+		RespondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	var zone models.RoamingZone
+	if err := database.DB.First(&zone, id).Error; err != nil {
+		RespondError(w, http.StatusNotFound, "Roaming Zone not found")
+		return
+	}
+
+	var channels []models.RoamingChannel
+	if len(channelIDs) > 0 {
+		database.DB.Find(&channels, channelIDs)
+	}
+
+	if err := database.DB.Model(&zone).Association("Channels").Replace(&channels); err != nil {
+		RespondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	RespondJSON(w, nil)
 }

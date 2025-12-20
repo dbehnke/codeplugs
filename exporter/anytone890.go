@@ -97,6 +97,45 @@ func ExportAnyTone890(db *gorm.DB, outputDir string, filterListID uint) error {
 		return err
 	}
 
+	f5, err := os.Create(filepath.Join(outputDir, "ScanList.CSV"))
+	if err != nil {
+		return err
+	}
+	defer f5.Close()
+	var scanLists []models.ScanList
+	if err := db.Preload("Channels").Find(&scanLists).Error; err != nil {
+		return err
+	}
+	if err := ExportAnyTone890ScanLists(scanLists, f5); err != nil {
+		return err
+	}
+
+	f6, err := os.Create(filepath.Join(outputDir, "RoamChannel.CSV"))
+	if err != nil {
+		return err
+	}
+	defer f6.Close()
+	var roamChans []models.RoamingChannel
+	if err := db.Find(&roamChans).Error; err != nil {
+		return err
+	}
+	if err := ExportAnyTone890RoamingChannels(roamChans, f6); err != nil {
+		return err
+	}
+
+	f7, err := os.Create(filepath.Join(outputDir, "RoamZone.CSV"))
+	if err != nil {
+		return err
+	}
+	defer f7.Close()
+	var roamZones []models.RoamingZone
+	if err := db.Preload("Channels").Find(&roamZones).Error; err != nil {
+		return err
+	}
+	if err := ExportAnyTone890RoamingZones(roamZones, f7); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -249,9 +288,10 @@ func ExportAnyTone890Talkgroups(contacts []models.Contact, w io.Writer) error {
 
 	for i, c := range contacts {
 		cType := "Group Call"
-		if c.Type == models.ContactTypePrivate {
+		switch c.Type {
+		case models.ContactTypePrivate:
 			cType = "Private Call"
-		} else if c.Type == models.ContactTypeAllCall {
+		case models.ContactTypeAllCall:
 			cType = "All Call"
 		}
 		if err := writeAnyToneRecord(w, []string{strconv.Itoa(i + 1), strconv.Itoa(c.DMRID), c.Name, cType, "None"}); err != nil {
@@ -362,6 +402,7 @@ func ExportAnyTone890DigitalContacts(contacts []models.DigitalContact, w io.Writ
 }
 
 // Helper to write a record with forced quotes around every field
+// Helper to write a record with forced quotes around every field
 func writeAnyToneRecord(w io.Writer, record []string) error {
 	for i, field := range record {
 		if i > 0 {
@@ -378,6 +419,108 @@ func writeAnyToneRecord(w io.Writer, record []string) error {
 	// Use CRLF for Windows/Radio compatibility
 	if _, err := w.Write([]byte("\r\n")); err != nil {
 		return err
+	}
+	return nil
+}
+
+func ExportAnyTone890ScanLists(lists []models.ScanList, w io.Writer) error {
+	if err := writeAnyToneRecord(w, []string{"No.", "Scan List Name", "Scan Channel Member", "Scan Channel Member RX Frequency", "Scan Channel Member TX Frequency", "Priority Channel 1", "Prio Ch1 RX Frequency", "Prio Ch1 TX Frequency", "Priority Channel 2", "Prio Ch2 RX Frequency", "Prio Ch2 TX Frequency", "Revert Channel", "Revert Ch RX Frequency", "Revert Ch TX Frequency", "Look Back Time A[s]", "Look Back Time B[s]", "Dropout Delay Time[s]", "Dwell Time[s]"}); err != nil {
+		return err
+	}
+
+	for i, l := range lists {
+		var chanNames []string
+		var rxFreqs []string
+		var txFreqs []string
+		for _, c := range l.Channels {
+			chanNames = append(chanNames, c.Name)
+			rxFreqs = append(rxFreqs, fmt.Sprintf("%.5f", c.RxFrequency))
+			txFreqs = append(txFreqs, fmt.Sprintf("%.5f", c.TxFrequency))
+		}
+
+		if err := writeAnyToneRecord(w, []string{
+			strconv.Itoa(i + 1),
+			l.Name,
+			strings.Join(chanNames, "|"),
+			strings.Join(rxFreqs, "|"),
+			strings.Join(txFreqs, "|"),
+			"Off", "", "", // Prio 1
+			"Off", "", "", // Prio 2
+			"Selected", "", "", // Revert
+			"0.1", "0.1", "0.1", "0.1", // Times (defaults)
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func ExportAnyTone890Roaming(db *gorm.DB, outputDir string) error {
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		return err
+	}
+
+	f, err := os.Create(filepath.Join(outputDir, "RoamChannel.CSV"))
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	var roamChans []models.RoamingChannel
+	if err := db.Find(&roamChans).Error; err != nil {
+		return err
+	}
+	return ExportAnyTone890RoamingChannels(roamChans, f)
+}
+
+func ExportAnyTone890RoamingChannels(channels []models.RoamingChannel, w io.Writer) error {
+	if err := writeAnyToneRecord(w, []string{"No.", "Receive Frequency", "Transmit Frequency", "Color Code", "Slot", "Name"}); err != nil {
+		return err
+	}
+
+	for i, c := range channels {
+		slot := "Slot1"
+		if c.TimeSlot == 2 {
+			slot = "Slot2"
+		}
+		if err := writeAnyToneRecord(w, []string{
+			strconv.Itoa(i + 1),
+			fmt.Sprintf("%.5f", c.RxFrequency),
+			fmt.Sprintf("%.5f", c.TxFrequency),
+			strconv.Itoa(c.ColorCode),
+			slot,
+			c.Name,
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func ExportAnyTone890RoamingZones(zones []models.RoamingZone, w io.Writer) error {
+	if err := writeAnyToneRecord(w, []string{"No.", "Name", "Roaming Channel Member", "Roaming Channel Member RX Frequency", "Roaming Channel Member TX Frequency"}); err != nil {
+		return err
+	}
+
+	for i, z := range zones {
+		var names []string
+		var rxFreqs []string
+		var txFreqs []string
+		for _, c := range z.Channels {
+			names = append(names, c.Name)
+			rxFreqs = append(rxFreqs, fmt.Sprintf("%.5f", c.RxFrequency))
+			txFreqs = append(txFreqs, fmt.Sprintf("%.5f", c.TxFrequency))
+		}
+
+		if err := writeAnyToneRecord(w, []string{
+			strconv.Itoa(i + 1),
+			z.Name,
+			strings.Join(names, "|"),
+			strings.Join(rxFreqs, "|"),
+			strings.Join(txFreqs, "|"),
+		}); err != nil {
+			return err
+		}
 	}
 	return nil
 }

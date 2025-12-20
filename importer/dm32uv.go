@@ -282,3 +282,156 @@ func ImportDM32UVDigitalContacts(db *gorm.DB, r io.Reader) error {
 	}
 	return nil
 }
+
+func ImportDM32UVScanLists(db *gorm.DB, r io.Reader) error {
+	reader := csv.NewReader(r)
+	header, err := reader.Read()
+	if err != nil {
+		return err
+	}
+
+	headerMap := make(map[string]int)
+	for i, h := range header {
+		headerMap[strings.TrimSpace(h)] = i
+	}
+
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		// "No.","Scan List Name","Scan Channel Member" (Assuming AnyTone-like headers for consistency or specific DM32UV headers which are usually "Channel Member")
+		// Based on DM32UV usually being like AnyTone but sometimes different headers.
+		// "Scan List Name" is safe bet. "Scan Channel Member" or "Channel Members".
+		// I'll check both.
+		name := ""
+		if idx, ok := headerMap["Scan List Name"]; ok {
+			name = record[idx]
+		}
+		if name == "" {
+			continue
+		}
+
+		list, err := models.FindOrCreateScanList(db, name)
+		if err != nil {
+			return err
+		}
+
+		if idxM, ok := headerMap["Scan Channel Member"]; ok {
+			members := strings.Split(record[idxM], "|")
+			var channels []models.Channel
+			db.Where("name IN ?", members).Find(&channels)
+			db.Model(list).Association("Channels").Append(&channels)
+		} else if idxM, ok := headerMap["Channel Members"]; ok {
+			members := strings.Split(record[idxM], "|")
+			var channels []models.Channel
+			db.Where("name IN ?", members).Find(&channels)
+			db.Model(list).Association("Channels").Append(&channels)
+		}
+	}
+	return nil
+}
+
+func ImportDM32UVRoamingChannels(db *gorm.DB, r io.Reader) error {
+	reader := csv.NewReader(r)
+	header, err := reader.Read()
+	if err != nil {
+		return err
+	}
+
+	headerMap := make(map[string]int)
+	for i, h := range header {
+		headerMap[strings.TrimSpace(h)] = i
+	}
+
+	var channels []models.RoamingChannel
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		rc := models.RoamingChannel{}
+		if idx, ok := headerMap["Channel Name"]; ok {
+			rc.Name = record[idx]
+		}
+		if idx, ok := headerMap["RX Frequency"]; ok {
+			rc.RxFrequency, _ = strconv.ParseFloat(record[idx], 64)
+		}
+		if idx, ok := headerMap["TX Frequency"]; ok {
+			rc.TxFrequency, _ = strconv.ParseFloat(record[idx], 64)
+		}
+		if idx, ok := headerMap["Color Code"]; ok {
+			rc.ColorCode, _ = strconv.Atoi(record[idx])
+		}
+		if idx, ok := headerMap["Time Slot"]; ok {
+			rc.TimeSlot, _ = strconv.Atoi(record[idx])
+		}
+
+		if rc.Name != "" {
+			channels = append(channels, rc)
+		}
+	}
+
+	for _, ch := range channels {
+		var existing models.RoamingChannel
+		if err := db.Where("name = ? AND rx_frequency = ?", ch.Name, ch.RxFrequency).First(&existing).Error; err == nil {
+			ch.ID = existing.ID
+			db.Save(&ch)
+		} else {
+			db.Create(&ch)
+		}
+	}
+	return nil
+}
+
+func ImportDM32UVRoamingZones(db *gorm.DB, r io.Reader) error {
+	reader := csv.NewReader(r)
+	header, err := reader.Read()
+	if err != nil {
+		return err
+	}
+
+	headerMap := make(map[string]int)
+	for i, h := range header {
+		headerMap[strings.TrimSpace(h)] = i
+	}
+
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		// "No.","Zone Name","Channel Members"
+		if idx, ok := headerMap["Zone Name"]; ok {
+			name := record[idx]
+			if name == "" {
+				continue
+			}
+
+			zone, err := models.FindOrCreateRoamingZone(db, name)
+			if err != nil {
+				return err
+			}
+
+			if idxM, ok := headerMap["Channel Members"]; ok {
+				members := strings.Split(record[idxM], "|")
+				var channels []models.RoamingChannel
+				db.Where("name IN ?", members).Find(&channels)
+				db.Model(zone).Association("Channels").Append(&channels)
+			}
+		}
+	}
+	return nil
+}

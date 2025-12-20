@@ -39,14 +39,26 @@ func TestHandleContacts(t *testing.T) {
 		t.Errorf("GET /api/contacts returned wrong status code: got %v want %v", status, http.StatusOK)
 	}
 
-	var response struct {
-		Data []models.Contact `json:"data"`
+	var wrapper struct {
+		Data json.RawMessage `json:"data"`
 	}
-	if err := json.Unmarshal(rr.Body.Bytes(), &response); err != nil {
-		t.Errorf("Failed to parse response: %v", err)
+	if err := json.Unmarshal(rr.Body.Bytes(), &wrapper); err != nil {
+		t.Errorf("Failed to parse wrapper: %v", err)
 	}
-	if len(response.Data) != 0 {
-		t.Errorf("Expected 0 contacts, got %d", len(response.Data))
+
+	// "data" field in wrapper maps to map[string]interface{"data": []} because RespondJSON wraps the map returned by handler.
+	// api.HandleContacts returns map[string]interface{}{"data": contacts}
+
+	// So RespondJSON output: { "success": true, "data": { "data": [] } }
+	// This double nesting of "data" is what complicates things.
+
+	var inner map[string][]models.Contact
+	if err := json.Unmarshal(wrapper.Data, &inner); err != nil {
+		t.Errorf("Failed to parse inner data: %v", err)
+	}
+
+	if len(inner["data"]) != 0 {
+		t.Errorf("Expected 0 contacts, got %d", len(inner["data"]))
 	}
 
 	// 2. Test POST valid contact
@@ -71,12 +83,15 @@ func TestHandleContacts(t *testing.T) {
 	rr = httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 	bodyBytes := rr.Body.Bytes()
-	json.Unmarshal(bodyBytes, &response)
-	if len(response.Data) != 1 {
-		t.Fatalf("Expected 1 contact, got %d. Body: %s", len(response.Data), string(bodyBytes))
+
+	json.Unmarshal(bodyBytes, &wrapper)
+	json.Unmarshal(wrapper.Data, &inner)
+
+	if len(inner["data"]) != 1 {
+		t.Fatalf("Expected 1 contact, got %d. Body: %s", len(inner["data"]), string(bodyBytes))
 	}
-	if response.Data[0].Name != "Local" {
-		t.Errorf("Expected contact name Local, got %s", response.Data[0].Name)
+	if inner["data"][0].Name != "Local" {
+		t.Errorf("Expected contact name Local, got %s", inner["data"][0].Name)
 	}
 }
 

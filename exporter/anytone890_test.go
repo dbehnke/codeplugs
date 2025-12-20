@@ -21,7 +21,16 @@ func setupAnyToneTestDB(t *testing.T) *gorm.DB {
 	if err != nil {
 		t.Fatalf("failed to connect database: %v", err)
 	}
-	err = db.AutoMigrate(&models.Channel{}, &models.Contact{}, &models.DigitalContact{}, &models.Zone{})
+	err = db.AutoMigrate(
+		&models.Channel{},
+		&models.Contact{},
+		&models.DigitalContact{},
+		&models.Zone{},
+		&models.RoamingChannel{},
+		&models.RoamingZone{},
+		&models.ScanList{},
+		&models.ContactListEntry{},
+	)
 	if err != nil {
 		t.Fatalf("failed to migrate database: %v", err)
 	}

@@ -57,13 +57,27 @@ Example: `./codeplugs --export my_codeplug.csv --region "Ann Arbor"`
 
 - **Zone Management**: Fully implement Zone-to-Channel relationships.
 - **Contact Management**: Separate Contacts from Channels for better DMR management.
-- **More Radios**: Add exporters for AnyTone, Yaesu System Fusion, etc.
+- **More Radios**: Add exporters for AnyTone, etc. (Note: Yaesu System Fusion is explicitly OUT OF SCOPE).
 - **UI**: Add a TUI or Web UI for easier data manipulation.
 
 ## Development Methodology
 
 ### Test Driven Development (TDD)
 
-- **Requirement**: All new logic must be tested.
-- **Workflow**: Write the test case *first*, ensure it fails, then write the implementation to make the test pass.
-- **Coverage**: Aim for high coverage on core logic (importers, exporters, data models).
+- **CRITICAL**: Tests MUST be written *before* implementation code. No exceptions.
+- **Workflow**: Create a failing test case -> Verify failure -> Write minimal code to pass -> Refactor.
+- **Coverage**: Maintain high coverage on core logic (importers, exporters, API handlers, services).
+### Terminal Standards
+
+- **Shell**: If using `zsh`, always ensure the following options are unset to prevent interference with automated commands:
+    ```bash
+    unsetopt correct_all
+    unsetopt correct
+    ```
+
+### Frontend Standards
+
+- **Framework**: Vue 3 + Vite.
+- **Runtime**: Bun (instead of Node.js).
+- **Styling**: Tailwind CSS v4.
+- **Design**: Premium aesthetic (Dark mode, glassmorphism, responsive).

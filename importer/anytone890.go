@@ -189,13 +189,6 @@ func ImportAnyTone890Zones(db *gorm.DB, r io.Reader) error {
 
 		if idx, ok := headerMap["Zone Channel Member"]; ok {
 			rawMembers := record[idx]
-			// AnyTone uses pipe delimiter? Sample says:
-			// Need to verify sample content "DMRZone.CSV".
-			// Wait, I read DMRZone.CSV earlier but I don't see channels in it in the sample output?
-			// Ah, the sample output in Step 53 was truncated or empty for line 2?
-			// "1","Zone Name","Zone Channel Member",...
-			// I should assume pipe delimiter based on DM32UV or check specific AnyTone format.
-			// Usually AnyTone uses | as separator in that field.
 			if rawMembers != "" {
 				members := strings.Split(rawMembers, "|")
 				var channels []models.Channel
@@ -203,8 +196,6 @@ func ImportAnyTone890Zones(db *gorm.DB, r io.Reader) error {
 				db.Model(zone).Association("Channels").Append(&channels)
 			}
 		}
-
-		// AnyTone also has "A Channel" and "B Channel" for VFOs, usually ignored in Zones struct.
 	}
 	return nil
 }
@@ -254,6 +245,152 @@ func ImportAnyTone890DigitalContacts(db *gorm.DB, r io.Reader) error {
 	}
 	if len(contacts) > 0 {
 		return db.Save(&contacts).Error
+	}
+	return nil
+}
+
+func ImportAnyTone890ScanLists(db *gorm.DB, r io.Reader) error {
+	reader := csv.NewReader(r)
+	header, err := reader.Read()
+	if err != nil {
+		return err
+	}
+
+	headerMap := make(map[string]int)
+	for i, h := range header {
+		headerMap[strings.TrimSpace(h)] = i
+	}
+
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		// "No.","Scan List Name","Scan Channel Member",...
+		if idx, ok := headerMap["Scan List Name"]; ok {
+			name := record[idx]
+			list, err := models.FindOrCreateScanList(db, name)
+			if err != nil {
+				return err
+			}
+
+			if idxM, ok := headerMap["Scan Channel Member"]; ok {
+				members := strings.Split(record[idxM], "|")
+				var channels []models.Channel
+				db.Where("name IN ?", members).Find(&channels)
+				db.Model(list).Association("Channels").Append(&channels)
+			}
+		}
+	}
+	return nil
+}
+
+func ImportAnyTone890RoamingChannels(db *gorm.DB, r io.Reader) error {
+	reader := csv.NewReader(r)
+	header, err := reader.Read()
+	if err != nil {
+		return err
+	}
+
+	headerMap := make(map[string]int)
+	for i, h := range header {
+		headerMap[strings.TrimSpace(h)] = i
+	}
+
+	var channels []models.RoamingChannel
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		rc := models.RoamingChannel{}
+		if idx, ok := headerMap["Name"]; ok {
+			rc.Name = record[idx]
+		}
+		if idx, ok := headerMap["RX Frequency"]; ok {
+			rc.RxFrequency, _ = strconv.ParseFloat(record[idx], 64)
+		} else if idx, ok := headerMap["Receive Frequency"]; ok {
+			rc.RxFrequency, _ = strconv.ParseFloat(record[idx], 64)
+		}
+
+		if idx, ok := headerMap["TX Frequency"]; ok {
+			rc.TxFrequency, _ = strconv.ParseFloat(record[idx], 64)
+		} else if idx, ok := headerMap["Transmit Frequency"]; ok {
+			rc.TxFrequency, _ = strconv.ParseFloat(record[idx], 64)
+		}
+		if idx, ok := headerMap["Color Code"]; ok {
+			rc.ColorCode, _ = strconv.Atoi(record[idx])
+		}
+		if idx, ok := headerMap["Slot"]; ok {
+			rc.TimeSlot, _ = strconv.Atoi(record[idx])
+		}
+
+		if rc.Name != "" {
+			channels = append(channels, rc)
+		}
+	}
+
+	for _, ch := range channels {
+		// Upsert based on Name and Freq
+		var existing models.RoamingChannel
+		if err := db.Where("name = ? AND rx_frequency = ?", ch.Name, ch.RxFrequency).First(&existing).Error; err == nil {
+			ch.ID = existing.ID
+			db.Save(&ch)
+		} else {
+			db.Create(&ch)
+		}
+	}
+	return nil
+}
+
+func ImportAnyTone890RoamingZones(db *gorm.DB, r io.Reader) error {
+	reader := csv.NewReader(r)
+	header, err := reader.Read()
+	if err != nil {
+		return err
+	}
+
+	headerMap := make(map[string]int)
+	for i, h := range header {
+		headerMap[strings.TrimSpace(h)] = i
+	}
+
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		// "No.","Name","Roaming Channel Member"
+		if idx, ok := headerMap["Name"]; ok {
+			name := record[idx]
+			if name == "" {
+				continue
+			}
+			
+			zone, err := models.FindOrCreateRoamingZone(db, name)
+			if err != nil {
+				return err
+			}
+
+			if idxM, ok := headerMap["Roaming Channel Member"]; ok {
+				members := strings.Split(record[idxM], "|")
+				var channels []models.RoamingChannel
+				db.Where("name IN ?", members).Find(&channels)
+				db.Model(zone).Association("Channels").Append(&channels)
+			}
+		}
 	}
 	return nil
 }

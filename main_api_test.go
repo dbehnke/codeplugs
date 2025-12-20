@@ -31,7 +31,16 @@ func setupTestDB() {
 	// Register Join Table
 	database.DB.SetupJoinTable(&models.Zone{}, "Channels", &models.ZoneChannel{})
 
-	database.DB.AutoMigrate(&models.Channel{}, &models.Zone{}, &models.Contact{}, &models.ZoneChannel{}, &models.DigitalContact{})
+	database.DB.AutoMigrate(
+		&models.Channel{},
+		&models.Zone{},
+		&models.Contact{},
+		&models.ZoneChannel{},
+		&models.DigitalContact{},
+		&models.ScanList{},
+		&models.RoamingChannel{},
+		&models.RoamingZone{},
+	)
 }
 
 func TestZoneAPI_CRUD(t *testing.T) {
@@ -50,8 +59,16 @@ func TestZoneAPI_CRUD(t *testing.T) {
 		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
 	}
 
+	var resp ResponseWrapper
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("Failed to parse wrapper: %v", err)
+	}
+
 	var createdZone models.Zone
-	json.Unmarshal(rr.Body.Bytes(), &createdZone)
+	if err := json.Unmarshal(resp.Data, &createdZone); err != nil {
+		t.Fatalf("Failed to parse zone: %v", err)
+	}
+
 	if createdZone.Name != zoneName {
 		t.Errorf("handler returned unexpected body: got %v want %v", createdZone.Name, zoneName)
 	}
@@ -64,8 +81,10 @@ func TestZoneAPI_CRUD(t *testing.T) {
 	rr = httptest.NewRecorder()
 	api.HandleZones(rr, req)
 
+	json.Unmarshal(rr.Body.Bytes(), &resp)
 	var zones []models.Zone
-	json.Unmarshal(rr.Body.Bytes(), &zones)
+	json.Unmarshal(resp.Data, &zones)
+
 	if len(zones) != 1 {
 		t.Errorf("expected 1 zone, got %d", len(zones))
 	}
@@ -141,8 +160,15 @@ func TestZoneAssignment_Ordering(t *testing.T) {
 	rr = httptest.NewRecorder()
 	api.HandleZones(rr, req)
 
+	var resp ResponseWrapper
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("Failed to parse wrapper: %v", err)
+	}
+
 	var fetchedZone models.Zone
-	json.Unmarshal(rr.Body.Bytes(), &fetchedZone)
+	if err := json.Unmarshal(resp.Data, &fetchedZone); err != nil {
+		t.Fatalf("Failed to parse zone: %v", err)
+	}
 
 	if len(fetchedZone.Channels) != 3 {
 		t.Errorf("expected 3 channels, got %d", len(fetchedZone.Channels))
@@ -176,4 +202,113 @@ func TestExportAPI_Zip(t *testing.T) {
 	}
 
 	// Could verify zip contents here
+}
+
+// ResponseWrapper matches api.JSONResponse generic structure for tests
+type ResponseWrapper struct {
+	Success bool            `json:"success"`
+	Data    json.RawMessage `json:"data"`
+	Error   string          `json:"error"`
+}
+
+func TestRoamingAPI_CRUD(t *testing.T) {
+	setupTestDB()
+
+	// 1. Create Roaming Channel
+	rcName := "Roam 1"
+	rc := models.RoamingChannel{
+		Name:        rcName,
+		RxFrequency: 446.000,
+		TxFrequency: 446.000,
+		ColorCode:   1,
+		TimeSlot:    2,
+	}
+	reqBody, _ := json.Marshal(rc)
+	req, _ := http.NewRequest("POST", "/api/roaming/channels", bytes.NewBuffer(reqBody))
+	rr := httptest.NewRecorder()
+
+	api.HandleRoamingChannels(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("create roaming channel failed: %d", rr.Code)
+	}
+
+	var resp ResponseWrapper
+	json.Unmarshal(rr.Body.Bytes(), &resp)
+
+	var createdRC models.RoamingChannel
+	json.Unmarshal(resp.Data, &createdRC)
+
+	if createdRC.Name != rcName {
+		t.Errorf("Expected name %s, got %s", rcName, createdRC.Name)
+	}
+
+	// 2. Create Roaming Zone
+	rzName := "Roam Zone A"
+	rz := models.RoamingZone{Name: rzName}
+	reqBody, _ = json.Marshal(rz)
+	req, _ = http.NewRequest("POST", "/api/roaming/zones", bytes.NewBuffer(reqBody))
+	rr = httptest.NewRecorder()
+
+	api.HandleRoamingZones(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Errorf("create roaming zone failed: %d", rr.Code)
+	}
+
+	json.Unmarshal(rr.Body.Bytes(), &resp)
+	var createdRZ models.RoamingZone
+	json.Unmarshal(resp.Data, &createdRZ)
+
+	if createdRZ.ID == 0 {
+		t.Error("No ID returned for roaming zone")
+	}
+
+	// 3. Assign Channels to Zone
+	reqBody, _ = json.Marshal([]uint{createdRC.ID})
+	url := fmt.Sprintf("/api/roaming/zones/assign?id=%d", createdRZ.ID)
+	req, _ = http.NewRequest("POST", url, bytes.NewBuffer(reqBody))
+	rr = httptest.NewRecorder()
+
+	api.HandleRoamingZoneAssignment(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Errorf("roaming zone assign failed: %d", rr.Code)
+	}
+
+	// 4. Verify Assignment
+	req, _ = http.NewRequest("GET", fmt.Sprintf("/api/roaming/zones?id=%d", createdRZ.ID), nil)
+	rr = httptest.NewRecorder()
+	api.HandleRoamingZones(rr, req)
+
+	json.Unmarshal(rr.Body.Bytes(), &resp)
+	var fetchedRZ models.RoamingZone
+	json.Unmarshal(resp.Data, &fetchedRZ)
+
+	if len(fetchedRZ.Channels) != 1 {
+		t.Errorf("Expected 1 channel in roaming zone, got %d", len(fetchedRZ.Channels))
+	}
+}
+
+func TestScanListAPI_CRUD(t *testing.T) {
+	setupTestDB()
+
+	// 1. Create Scan List
+	slName := "ScanList Alpha"
+	sl := models.ScanList{Name: slName}
+	reqBody, _ := json.Marshal(sl)
+	req, _ := http.NewRequest("POST", "/api/scanlists", bytes.NewBuffer(reqBody))
+	rr := httptest.NewRecorder()
+
+	api.HandleScanLists(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Errorf("create scanlist failed: %d", rr.Code)
+	}
+
+	var resp ResponseWrapper
+	json.Unmarshal(rr.Body.Bytes(), &resp)
+	var createdSL models.ScanList
+	json.Unmarshal(resp.Data, &createdSL)
+
+	if createdSL.Name != slName {
+		t.Errorf("Expected %s, got %s", slName, createdSL.Name)
+	}
 }
