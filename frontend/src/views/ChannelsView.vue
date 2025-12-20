@@ -246,7 +246,7 @@ const saveModal = async () => {
             if (value !== undefined && value !== null && value !== '') { // careful with empty string for Name etc, but for bulk operations usually we ignore empty unless explicit
                // For bulk, if user didn't touch it, it should be undefined in our logic (if we didn't init it)
                // But wait, v-model will initialize it? No, only if we provide initial value.
-               updates[key as keyof Channel] = value
+               updates[key as keyof Channel] = value as any
             }
         }
         
