@@ -155,6 +155,20 @@ FORMAT=at890 task generate-contacts
 
 See `filters/README.md` for filter file format details.
 
+### Git Hooks
+
+A pre-commit hook runs `golangci-lint` before each commit to ensure code quality.
+
+**Install hooks:**
+```bash
+./scripts/install-hooks.sh
+```
+
+**Skip hooks (emergency only):**
+```bash
+git commit --no-verify
+```
+
 ### Makefile (Legacy)
 
 A `Makefile` is provided for backward compatibility but is considered deprecated. Use `task` for the latest features.
