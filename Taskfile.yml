@@ -1,0 +1,150 @@
+version: '3'
+
+vars:
+  BINARY_NAME: codeplugs
+  BUILD_DIR: .
+  FRONTEND_DIR: frontend
+
+env:
+  GO111MODULE: "on"
+  CGO_ENABLED: "0"
+
+tasks:
+  default:
+    desc: Run lint and tests (default)
+    deps: [vet, test]
+
+  build:
+    desc: Build the Go binary (includes frontend)
+    deps: [frontend-build]
+    sources:
+      - "**/*.go"
+      - "go.mod"
+      - "go.sum"
+    generates:
+      - "{{.BINARY_NAME}}"
+    cmds:
+      - go build -o {{.BINARY_NAME}} main.go
+
+  fast-build:
+    desc: Quick build without rebuilding frontend
+    sources:
+      - "**/*.go"
+      - "go.mod"
+      - "go.sum"
+    generates:
+      - "{{.BINARY_NAME}}"
+    cmds:
+      - go build -o {{.BINARY_NAME}} main.go
+
+  frontend-install:
+    desc: Install frontend dependencies
+    dir: "{{.FRONTEND_DIR}}"
+    sources:
+      - package.json
+      - bun.lockb
+    generates:
+      - node_modules/**/**
+    cmds:
+      - bun install
+
+  frontend-build:
+    desc: Build the frontend
+    deps: [frontend-install]
+    dir: "{{.FRONTEND_DIR}}"
+    sources:
+      - src/**/**
+      - public/**/**
+      - index.html
+      - vite.config.ts
+      - package.json
+    generates:
+      - dist/**/**
+    cmds:
+      - bun run build
+
+  test:
+    desc: Run all tests
+    cmds:
+      - go test ./...
+
+  test-verbose:
+    desc: Run all tests with verbose output
+    cmds:
+      - go test -v ./...
+
+  test-race:
+    desc: Run all tests with race detector
+    cmds:
+      - go test -race ./...
+
+  clean:
+    desc: Remove build artifacts
+    cmds:
+      - go clean
+      - rm -f {{.BINARY_NAME}}
+      - rm -f codeplugs.db*
+      - rm -f *.csv
+      - rm -f *.txt
+      - rm -rf {{.FRONTEND_DIR}}/dist
+
+  run:
+    desc: Build and run the server
+    deps: [build]
+    cmds:
+      - ./{{.BINARY_NAME}} --serve
+
+  vet:
+    desc: Run go vet
+    cmds:
+      - go vet ./...
+
+  fmt:
+    desc: Run go fmt
+    cmds:
+      - go fmt ./...
+
+  fmt-check:
+    desc: Check if code is formatted
+    cmds:
+      - |
+        if [ -n "$(gofmt -l .)" ]; then
+          echo "Code is not formatted. Run 'task fmt' to fix."
+          gofmt -l .
+          exit 1
+        fi
+
+  lint:
+    desc: Run linter (golangci-lint if available, else vet)
+    cmds:
+      - |
+        if command -v golangci-lint &> /dev/null; then
+          golangci-lint run ./...
+        else
+          echo "golangci-lint not found, running go vet instead"
+          go vet ./...
+        fi
+
+  generate-contacts:
+    desc: Generate filtered contact list from filters/example-filter.csv
+    deps: [fast-build]
+    vars:
+      FILTER_FILE: '{{.FILTER_FILE | default "filters/example-filter.csv"}}'
+      SOURCE_FILE: '{{.SOURCE_FILE | default "user.csv"}}'
+      OUTPUT_FILE: '{{.OUTPUT_FILE | default "generated/contacts.csv"}}'
+      FORMAT: '{{.FORMAT | default "radioid"}}'
+    cmds:
+      - |
+        if [ ! -f '{{.SOURCE_FILE}}' ]; then
+          echo "Downloading RadioID.net contacts..."
+          curl -L -o '{{.SOURCE_FILE}}' 'https://radioid.net/static/user.csv'
+        fi
+      - ./{{.BINARY_NAME}} --generate-contacts --filter-file '{{.FILTER_FILE}}' --source-file '{{.SOURCE_FILE}}' --output-file '{{.OUTPUT_FILE}}' --contact-format '{{.FORMAT}}'
+
+  ci:
+    desc: Run all CI checks
+    deps: [fmt-check, vet, lint, test]
+
+  check:
+    desc: Run all checks (fmt, vet, lint, test, build)
+    deps: [fmt-check, vet, lint, test, build]

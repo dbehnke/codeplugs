@@ -1,0 +1,83 @@
+name: Generate Filtered Contacts
+
+on:
+  # Manual trigger
+  workflow_dispatch:
+  
+  # Trigger when filter files change on main branch
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'filters/**'
+
+jobs:
+  generate:
+    name: Generate Filtered Contact Lists
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.22'
+    
+    - name: Cache RadioID.net contacts
+      uses: actions/cache@v4
+      id: cache-radioid
+      with:
+        path: user.csv
+        key: radioid-contacts-${{ github.run_id }}
+        restore-keys: |
+          radioid-contacts-
+    
+    - name: Download RadioID.net contacts
+      if: steps.cache-radioid.outputs.cache-hit != 'true'
+      run: |
+        echo "Downloading RadioID.net contacts..."
+        curl -L -o user.csv "https://radioid.net/static/user.csv"
+        echo "Downloaded $(wc -l < user.csv) lines"
+    
+    - name: Build codeplugs binary
+      run: go build -o codeplugs main.go
+    
+    - name: Create generated directory
+      run: mkdir -p generated
+    
+    - name: Generate filtered contacts
+      run: |
+        # Process each filter file in filters/ directory
+        for filter_file in filters/*.csv; do
+          if [ -f "$filter_file" ]; then
+            filename=$(basename "$filter_file" .csv)
+            echo "Processing filter: $filter_file -> generated/${filename}.csv"
+            ./codeplugs --generate-contacts \
+              --filter-file "$filter_file" \
+              --source-file user.csv \
+              --output-file "generated/${filename}.csv"
+          fi
+        done
+    
+    - name: Check for changes
+      id: check-changes
+      run: |
+        git add generated/
+        if git diff --cached --quiet; then
+          echo "No changes to commit"
+          echo "changed=false" >> $GITHUB_OUTPUT
+        else
+          echo "Changes detected"
+          echo "changed=true" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Commit and push generated contacts
+      if: steps.check-changes.outputs.changed == 'true'
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git commit -m "Update filtered contact lists [skip ci]"
+        git push

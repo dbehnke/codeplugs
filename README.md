@@ -17,11 +17,43 @@ A Go-based tool for managing Amateur Radio codeplugs. It supports importing from
 
 ## Installation
 
+Install [go-task](https://taskfile.dev/) (recommended):
+
 ```bash
-go build -o codeplugs
+# macOS
+brew install go-task
+
+# Node.js
+npm install -g @go-task/cli
+```
+
+Build the binary:
+
+```bash
+task build
 ```
 
 ## Usage
+
+### Taskfile (Recommended)
+
+The project uses [go-task](https://taskfile.dev/) to manage development tasks.
+
+| Command | Description |
+|---------|-------------|
+| `task build` | Build the Go binary (includes frontend) |
+| `task fast-build` | Quick build without rebuilding frontend |
+| `task test` | Run all tests |
+| `task run` | Build and run the server |
+| `task clean` | Remove build artifacts and temporary files |
+| `task fmt` | Run `go fmt` |
+| `task vet` | Run `go vet` |
+| `task lint` | Run linter (golangci-lint or vet) |
+| `task check` | Run all checks (fmt, vet, lint, test, build) |
+| `task ci` | Run CI checks |
+| `task frontend-install` | Install frontend dependencies |
+| `task frontend-build` | Build the frontend |
+| `task generate-contacts` | Generate filtered contact list (set FORMAT=dm32uv/at890) |
 
 ### CLI Commands
 
@@ -66,7 +98,7 @@ go build -o codeplugs
 Start the server:
 
 ```bash
-./codeplugs --server
+task run
 ```
 
 Access the UI at `http://localhost:8080`.
@@ -76,5 +108,58 @@ Access the UI at `http://localhost:8080`.
 Run tests:
 
 ```bash
-go test ./...
+task test
+```
+
+### Filtered Contact Generation
+
+Generate filtered contact lists from RadioID.net data for specific radios:
+
+**Basic usage** (RadioID.net format):
+```bash
+./codeplugs --generate-contacts \
+  --filter-file filters/my-contacts.csv \
+  --source-file user.csv \
+  --output-file contacts.csv
+```
+
+**DM32UV format**:
+```bash
+./codeplugs --generate-contacts \
+  --filter-file filters/my-contacts.csv \
+  --source-file user.csv \
+  --output-file digital_contacts.csv \
+  --contact-format dm32uv
+```
+
+**AnyTone 890 format**:
+```bash
+./codeplugs --generate-contacts \
+  --filter-file filters/my-contacts.csv \
+  --source-file user.csv \
+  --output-file DMRDigitalContactList.CSV \
+  --contact-format at890
+```
+
+Or use Taskfile:
+```bash
+# Default (RadioID format)
+task generate-contacts
+
+# DM32UV format
+FORMAT=dm32uv task generate-contacts
+
+# AnyTone 890 format
+FORMAT=at890 task generate-contacts
+```
+
+See `filters/README.md` for filter file format details.
+
+### Makefile (Legacy)
+
+A `Makefile` is provided for backward compatibility but is considered deprecated. Use `task` for the latest features.
+
+```bash
+make build
+make test
 ```

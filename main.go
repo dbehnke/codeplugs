@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"codeplugs/api"
+	"codeplugs/cmd"
 	"codeplugs/database"
 	"codeplugs/exporter"
 	"codeplugs/importer"
@@ -42,7 +43,28 @@ func main() {
 	viewList := flag.String("view-list", "", "View filter list stats (use 'all' for summary, or specify name)")
 	useList := flag.String("use-list", "", "Filter export using this named list from the database")
 
+	// Contact Generation Flags
+	generateContacts := flag.Bool("generate-contacts", false, "Generate filtered contact list from source CSV")
+	genFilterFile := flag.String("filter-file", "", "Filter file containing DMR IDs (required with --generate-contacts)")
+	genSourceFile := flag.String("source-file", "", "Source CSV file (RadioID.net format)")
+	genOutputFile := flag.String("output-file", "filtered_contacts.csv", "Output file for filtered contacts")
+	genFormat := flag.String("contact-format", "radioid", "Output format for contacts: radioid (default), dm32uv, or at890")
+
 	flag.Parse()
+
+	// Handle Contact Generation (no DB required)
+	if *generateContacts {
+		if *genFilterFile == "" {
+			log.Fatal("Error: --filter-file is required when using --generate-contacts")
+		}
+		if *genSourceFile == "" {
+			log.Fatal("Error: --source-file is required when using --generate-contacts")
+		}
+		if err := cmd.GenerateContacts(*genFilterFile, *genSourceFile, *genOutputFile, *genFormat); err != nil {
+			log.Fatalf("Error generating contacts: %v", err)
+		}
+		return
+	}
 
 	database.Connect(*dbPath)
 

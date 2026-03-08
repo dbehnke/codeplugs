@@ -100,7 +100,7 @@ func TestPhase3_APIStandardization(t *testing.T) {
 	if len(resp.Data) != 1 {
 		t.Errorf("Expected 1 channel in Data, got %d", len(resp.Data))
 	}
-	
+
 	if resp.Data[0].Name != "API Test Channel" {
 		t.Errorf("Expected channel name 'API Test Channel', got '%s'", resp.Data[0].Name)
 	}
@@ -235,7 +235,7 @@ func TestPhase3_DM32UV_RoundTrip(t *testing.T) {
 	database.DB.Model(&sl).Association("Channels").Append(&ch2)
 
 	rz := models.RoamingZone{Name: "Roam Zone 1"}
-	database.DB.Create(&rz) 
+	database.DB.Create(&rz)
 	rc1 := models.RoamingChannel{Name: "Roam Ch 1", RxFrequency: 444.000, TxFrequency: 449.000, ColorCode: 1, TimeSlot: 1}
 	database.DB.Create(&rc1)
 	database.DB.Model(&rz).Association("Channels").Append(&rc1)
