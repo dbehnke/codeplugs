@@ -148,3 +148,91 @@ tasks:
   check:
     desc: Run all checks (fmt, vet, lint, test, build)
     deps: [fmt-check, vet, lint, test, build]
+
+  generate-brandmeister:
+    desc: Generate BrandMeister filtered contacts in all formats
+    deps: [fast-build]
+    vars:
+      FILTER_FILE: 'filters/filter-brandmeister.csv'
+      SOURCE_FILE: 'outputs/radioid-net-user.csv'
+      TIMESTAMP:
+        sh: date +%Y%m%d_%H%M%S
+    cmds:
+      - |
+        if [ ! -f '{{.SOURCE_FILE}}' ]; then
+          echo "Downloading RadioID.net contacts..."
+          curl -L -o '{{.SOURCE_FILE}}' 'https://radioid.net/static/user.csv'
+          echo "Downloaded to {{.SOURCE_FILE}}"
+        else
+          echo "Using existing source file: {{.SOURCE_FILE}}"
+          echo "Delete it to force re-download"
+        fi
+      - echo "Generating BrandMeister filtered contacts..."
+      - |
+        echo "Filter: {{.FILTER_FILE}} ($(wc -l < {{.FILTER_FILE}} | xargs) lines)"
+      - >
+        ./{{.BINARY_NAME}} --generate-contacts
+        --filter-file '{{.FILTER_FILE}}'
+        --source-file '{{.SOURCE_FILE}}'
+        --output-file 'outputs/brandmeister-radioid-{{.TIMESTAMP}}.csv'
+        --contact-format 'radioid'
+      - >
+        ./{{.BINARY_NAME}} --generate-contacts
+        --filter-file '{{.FILTER_FILE}}'
+        --source-file '{{.SOURCE_FILE}}'
+        --output-file 'outputs/brandmeister-dm32uv-{{.TIMESTAMP}}.csv'
+        --contact-format 'dm32uv'
+      - >
+        ./{{.BINARY_NAME}} --generate-contacts
+        --filter-file '{{.FILTER_FILE}}'
+        --source-file '{{.SOURCE_FILE}}'
+        --output-file 'outputs/brandmeister-at890-{{.TIMESTAMP}}.csv'
+        --contact-format 'at890'
+      - echo ""
+      - echo "Generated files:"
+      - ls -lh outputs/brandmeister-*.csv | awk '{print $9, "(" $5 ")"}'
+
+  generate-brandmeister-clean:
+    desc: Clean and regenerate BrandMeister contacts (force re-download)
+    cmds:
+      - rm -f outputs/radioid-net-user.csv
+      - task generate-brandmeister
+
+  release:
+    desc: Build release binaries locally with GoReleaser (dry-run)
+    deps: [frontend-build]
+    cmds:
+      - |
+        if ! command -v goreleaser &> /dev/null; then
+          echo "Installing goreleaser..."
+          go install github.com/goreleaser/goreleaser/v2@latest
+        fi
+      - goreleaser release --snapshot --clean
+
+  release-local:
+    desc: Build release binaries for current platform only
+    deps: [frontend-build]
+    cmds:
+      - |
+        if ! command -v goreleaser &> /dev/null; then
+          echo "Installing goreleaser..."
+          go install github.com/goreleaser/goreleaser/v2@latest
+        fi
+      - goreleaser build --single-target --snapshot --clean
+      - echo "Binary built in dist/"
+      - ls -lh dist/
+
+  tag-release:
+    desc: Create a new version tag and push to trigger release
+    vars:
+      VERSION: '{{.VERSION | default ""}}'
+    cmds:
+      - |
+        if [ -z "{{.VERSION}}" ]; then
+          echo "Usage: VERSION=v1.2.3 task tag-release"
+          exit 1
+        fi
+      - git tag -a "{{.VERSION}}" -m "Release {{.VERSION}}"
+      - git push origin "{{.VERSION}}"
+      - echo "Pushed tag {{.VERSION}} - GitHub Actions will build and release"
+

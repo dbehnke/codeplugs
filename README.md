@@ -155,6 +155,25 @@ FORMAT=at890 task generate-contacts
 
 See `filters/README.md` for filter file format details.
 
+#### BrandMeister Contact Generation
+
+Generate contacts filtered by BrandMeister Last Heard activity (all formats at once):
+
+```bash
+# Generate contacts for active BrandMeister users
+# Downloads RadioID.net data, applies filters/filter-brandmeister.csv
+# Creates three output files in outputs/ directory
+task generate-brandmeister
+
+# Force re-download of RadioID.net data
+task generate-brandmeister-clean
+```
+
+This creates:
+- `outputs/brandmeister-radioid-{timestamp}.csv` - Standard RadioID.net format
+- `outputs/brandmeister-dm32uv-{timestamp}.csv` - Baofeng DM32UV format
+- `outputs/brandmeister-at890-{timestamp}.csv` - AnyTone 890 format
+
 ### Git Hooks
 
 A pre-commit hook runs `golangci-lint` before each commit to ensure code quality.
@@ -167,6 +186,42 @@ A pre-commit hook runs `golangci-lint` before each commit to ensure code quality
 **Skip hooks (emergency only):**
 ```bash
 git commit --no-verify
+```
+
+### Automated Releases
+
+#### BrandMeister Contacts (Auto-Release)
+
+When you push changes to `filters/filter-brandmeister.csv` on the main branch:
+
+1. GitHub Actions automatically runs `task generate-brandmeister-clean`
+2. Generated contact files are committed to `outputs/` directory
+3. A new release is created with tag `bm-{timestamp}`
+4. Release includes all three formats (radioid, dm32uv, at890)
+
+#### Binary Releases (GoReleaser)
+
+When you push a version tag (e.g., `v1.2.3`):
+
+1. GitHub Actions runs GoReleaser
+2. Builds binaries for Linux, macOS, and Windows (AMD64 and ARM64)
+3. Creates a GitHub Release with changelog
+4. Includes checksums and SBOM
+
+**Create a new release:**
+```bash
+# Local dry-run
+ task release
+
+# Build for current platform only
+task release-local
+
+# Create and push version tag (triggers GitHub release)
+task tag-release VERSION=v1.2.3
+
+# Or manually
+git tag -a v1.2.3 -m "Release v1.2.3"
+git push origin v1.2.3
 ```
 
 ### Makefile (Legacy)
