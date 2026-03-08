@@ -90,6 +90,3 @@ release:
     - **codeplugs_{{ .Version }}_darwin_arm64.tar.gz** - macOS Apple Silicon
     - **codeplugs_{{ .Version }}_windows_amd64.zip** - Windows AMD64
     - **checksums.txt** - SHA256 checksums
-
-sboms:
-  - artifacts: archive
