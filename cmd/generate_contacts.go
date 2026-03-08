@@ -113,7 +113,9 @@ func GenerateContacts(filterFile, sourceFile, outputFile, format string) error {
 	switch format {
 	case "dm32uv":
 		writer = csv.NewWriter(outFile)
-		writer.Write([]string{"No.", "ID", "Repeater", "Name", "City", "Province", "Country", "Remark", "Type", "Alert Call"})
+		if err := writer.Write([]string{"No.", "ID", "Repeater", "Name", "City", "Province", "Country", "Remark", "Type", "Alert Call"}); err != nil {
+			return fmt.Errorf("failed to write header: %w", err)
+		}
 		writeRecord = func(record []string) error {
 			return writer.Write(record)
 		}
@@ -122,7 +124,7 @@ func GenerateContacts(filterFile, sourceFile, outputFile, format string) error {
 		writeRecord = func(record []string) error {
 			for i, field := range record {
 				if i > 0 {
-					if _, err := outFile.Write([]byte(",")); err != nil {
+					if _, err := outFile.WriteString(","); err != nil {
 						return err
 					}
 				}
@@ -131,13 +133,15 @@ func GenerateContacts(filterFile, sourceFile, outputFile, format string) error {
 					return err
 				}
 			}
-			if _, err := outFile.Write([]byte("\r\n")); err != nil {
+			if _, err := outFile.WriteString("\r\n"); err != nil {
 				return err
 			}
 			return nil
 		}
 		// Write header
-		writeRecord([]string{"No.", "Radio ID", "Callsign", "Name", "City", "State", "Country", "Remarks", "Call Type", "Call Alert"})
+		if err := writeRecord([]string{"No.", "Radio ID", "Callsign", "Name", "City", "State", "Country", "Remarks", "Call Type", "Call Alert"}); err != nil {
+			return fmt.Errorf("failed to write header: %w", err)
+		}
 	default: // radioid
 		writer = csv.NewWriter(outFile)
 		if err := writer.Write(header); err != nil {
