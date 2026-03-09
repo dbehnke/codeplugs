@@ -378,7 +378,7 @@ func ImportAnyTone890RoamingZones(db *gorm.DB, r io.Reader) error {
 			if name == "" {
 				continue
 			}
-			
+
 			zone, err := models.FindOrCreateRoamingZone(db, name)
 			if err != nil {
 				return err

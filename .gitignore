@@ -20,3 +20,11 @@ frontend/dist/
 
 # Logs
 *.log
+
+# Generated outputs
+outputs/
+generated/
+
+# Cached downloads
+user.csv
+radioid-net-user.csv

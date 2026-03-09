@@ -1,0 +1,97 @@
+version: "2"
+
+run:
+  go: '1.26.1'
+
+linters:
+  default: all
+  disable:
+    - cyclop
+    - depguard
+    - dupl
+    - embeddedstructfieldcheck
+    - err113
+    - errcheck
+    - errchkjson
+    - errorlint
+    - exhaustive
+    - exhaustruct
+    - forbidigo
+    - forcetypeassert
+    - funlen
+    - gochecknoglobals
+    - gochecknoinits
+    - gocognit
+    - goconst
+    - gocritic
+    - gocyclo
+    - godoclint
+    - godot
+    - godox
+    - goheader
+    - gomoddirectives
+    - gomodguard
+    - gosec
+    - ineffassign
+    - ireturn
+    - lll
+    - maintidx
+    - mirror
+    - mnd
+    - modernize
+    - musttag
+    - nestif
+    - nlreturn
+    - noctx
+    - noinlineerr
+    - nolintlint
+    - nonamedreturns
+    - paralleltest
+    - perfsprint
+    - prealloc
+    - predeclared
+    - recvcheck
+    - revive
+    - staticcheck
+    - tagliatelle
+    - tagalign
+    - testpackage
+    - thelper
+    - tparallel
+    - unparam
+    - usestdlibvars
+    - usetesting
+    - varnamelen
+    - wastedassign
+    - whitespace
+    - wrapcheck
+    - wsl
+    - wsl_v5
+
+linters-settings:
+  errcheck:
+    exclude-functions:
+      - (*os.File).Close
+      - io.Closer.Close
+  govet:
+    settings:
+      shadow:
+        strict: true
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - errcheck
+        - dupl
+        - funlen
+    - path: cmd/generate_contacts\.go
+      linters:
+        - errcheck
+    - path: .
+      linters:
+        - ineffassign
+    # Exclude defer Close() errors - common pattern
+    - text: "defer .*Close.*"
+      linters:
+        - errcheck
