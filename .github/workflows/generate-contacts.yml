@@ -65,16 +65,46 @@ jobs:
     - name: Generate filtered contacts
       run: |
         # Process each filter file in filters/ directory
+        # Generate all three radio formats
         for filter_file in filters/*.csv; do
           if [ -f "$filter_file" ]; then
             filename=$(basename "$filter_file" .csv)
-            echo "Processing filter: $filter_file -> generated/${filename}.csv"
+            echo ""
+            echo "=========================================="
+            echo "Processing filter: $filter_file"
+            echo "=========================================="
+            
+            # Generate RadioID format (default)
+            echo "-> Generating RadioID format..."
             ./codeplugs --generate-contacts \
               --filter-file "$filter_file" \
               --source-file user.csv \
-              --output-file "generated/${filename}.csv"
+              --output-file "generated/${filename}-radioid.csv" \
+              --contact-format radioid
+            
+            # Generate DM32UV format
+            echo "-> Generating DM32UV format..."
+            ./codeplugs --generate-contacts \
+              --filter-file "$filter_file" \
+              --source-file user.csv \
+              --output-file "generated/${filename}-dm32uv.csv" \
+              --contact-format dm32uv
+            
+            # Generate AnyTone 890 format
+            echo "-> Generating AnyTone 890 format..."
+            ./codeplugs --generate-contacts \
+              --filter-file "$filter_file" \
+              --source-file user.csv \
+              --output-file "generated/${filename}-at890.csv" \
+              --contact-format at890
           fi
         done
+        
+        echo ""
+        echo "=========================================="
+        echo "Generated files:"
+        ls -lh generated/*.csv
+        echo "=========================================="
     
     - name: Create Pull Request
       id: create-pr
@@ -90,14 +120,19 @@ jobs:
           - Updated contact lists based on filter files in `filters/`
           - Source: RadioID.net user.csv
           - Triggered by: ${{ github.event_name }}
+          - Generated formats for each filter:
+            - `*-radioid.csv` - Standard RadioID.net format
+            - `*-dm32uv.csv` - Baofeng DM32UV format
+            - `*-at890.csv` - AnyTone 890 format
 
           ## Files Changed
           Files in `generated/` directory have been updated.
 
           ## Review Checklist
-          - [ ] Verify contact counts are reasonable
+          - [ ] Verify contact counts are reasonable for each format
           - [ ] Check for unexpected changes
           - [ ] Confirm filter files are correct
+          - [ ] All three formats generated (radioid, dm32uv, at890)
         branch: auto/update-contacts-${{ github.run_id }}
         delete-branch: true
         add-paths: |
