@@ -23,7 +23,6 @@ frontend/dist/
 
 # Generated outputs
 outputs/
-generated/
 
 # Cached downloads
 user.csv
