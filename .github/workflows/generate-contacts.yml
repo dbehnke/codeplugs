@@ -25,7 +25,18 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version: '1.26.1'
-    
+
+    - name: Set up Bun
+      uses: oven-sh/setup-bun@v1
+      with:
+        bun-version: latest
+
+    - name: Build frontend
+      run: |
+        cd frontend
+        bun install
+        bun run build
+
     - name: Cache RadioID.net contacts
       uses: actions/cache@v4
       id: cache-radioid
