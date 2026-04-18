@@ -103,25 +103,18 @@ jobs:
           timestamp=$(echo "$first_file" | grep -oE '[0-9]{8}_[0-9]{6}')
           echo "timestamp=$timestamp" >> $GITHUB_OUTPUT
 
-      - name: Commit generated contacts
-        run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-
           git add -f outputs/
 
           if git diff --cached --quiet; then
             echo "No changes to commit"
             echo "committed=false" >> $GITHUB_OUTPUT
           else
-            git commit -m "Update BrandMeister contacts - ${{ steps.generate.outputs.timestamp }} [skip ci]"
+            git commit -m "Update BrandMeister contacts - $timestamp [skip ci]"
             echo "committed=true" >> $GITHUB_OUTPUT
+            git push
           fi
-
-      - name: Push changes
-        if: steps.generate.outputs.committed == 'true'
-        run: git push
-        shell: bash
 
   release:
     name: Create Pre-Release
@@ -130,10 +123,10 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Fetch and checkout latest main
+        run: |
+          git fetch origin main --force
+          git checkout origin/main
 
       - name: Cleanup old pre-releases (keep last 4)
         run: |
@@ -165,8 +158,8 @@ jobs:
       - name: Create pre-release
         uses: softprops/action-gh-release@v1
         with:
-          name: "BrandMeister Pre-Release ${{ env.timestamp }}"
-          tag_name: "bm-pre-${{ env.timestamp }}"
+          name: "BrandMeister Pre-Release ${{ steps.timestamp.outputs.timestamp }}"
+          tag_name: "bm-pre-${{ steps.timestamp.outputs.timestamp }}"
           draft: false
           prerelease: true
           files: outputs/brandmeister-*.csv
