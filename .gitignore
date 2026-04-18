@@ -24,6 +24,9 @@ frontend/dist/
 # Generated outputs
 outputs/
 
+# Worktrees
+.worktrees/
+
 # Cached downloads
 user.csv
 radioid-net-user.csv
