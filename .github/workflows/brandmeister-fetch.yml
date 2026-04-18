@@ -125,10 +125,16 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Fetch and checkout latest main
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Pull latest changes
         run: |
           git fetch origin main --force
-          git checkout origin/main
+          git reset --hard origin/main
 
       - name: Cleanup old pre-releases (keep last 4)
         run: |
