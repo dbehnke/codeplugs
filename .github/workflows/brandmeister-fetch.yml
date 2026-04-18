@@ -24,6 +24,7 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
+          node-version: "24"
 
       - name: Install Playwright browsers
         run: bunx playwright install chromium --with-deps
@@ -63,12 +64,13 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.26.1'
+          go-version: '1.26.2'
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
+          node-version: "24"
 
       - name: Install Task
         uses: arduino/setup-task@v2
