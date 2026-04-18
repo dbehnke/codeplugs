@@ -108,7 +108,7 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
 
-          git add outputs/
+          git add -f outputs/
 
           if git diff --cached --quiet; then
             echo "No changes to commit"
