@@ -1,5 +1,8 @@
 name: BrandMeister Fetch & Release
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 on:
   schedule:
     - cron: '0 3 * * 0'
@@ -24,7 +27,6 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-          node-version: "24"
 
       - name: Install Playwright browsers
         run: bunx playwright install chromium --with-deps
@@ -70,7 +72,6 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-          node-version: "24"
 
       - name: Install Task
         uses: arduino/setup-task@v2
