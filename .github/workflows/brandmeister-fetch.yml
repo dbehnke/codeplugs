@@ -1,0 +1,179 @@
+name: BrandMeister Fetch & Release
+
+on:
+  schedule:
+    cron: '0 3 * * 0'
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+    paths:
+      - 'filters/filter-brandmeister.csv'
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    name: Fetch BrandMeister Contacts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Playwright browsers
+        run: bunx playwright install chromium --with-deps
+
+      - name: Fetch BrandMeister contacts
+        id: fetch
+        run: |
+          bun run scripts/fetch-brandmeister.ts
+          echo "lines=$(wc -l < filters/filter-brandmeister.csv | tr -d ' ')" >> $GITHUB_OUTPUT
+
+      - name: Commit filter file
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+
+          git add filters/filter-brandmeister.csv
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            git commit -m "Update BrandMeister filter [skip ci]"
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Push changes
+        if: steps.fetch.outputs.changed == 'true'
+        run: git push
+        shell: bash
+
+  generate:
+    name: Generate Filtered Contacts
+    runs-on: ubuntu-latest
+    needs: fetch
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.1'
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Task
+        uses: arduino/setup-task@v2
+        with:
+          version: 3.x
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          bun install
+          bun run build
+
+      - name: Generate contacts
+        id: generate
+        run: |
+          task generate-brandmeister-clean
+
+          echo "files<<EOF" >> $GITHUB_OUTPUT
+          ls -1 outputs/brandmeister-*.csv >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+          first_file=$(ls -1 outputs/brandmeister-*.csv | head -1)
+          timestamp=$(echo "$first_file" | grep -oE '[0-9]{8}_[0-9]{6}')
+          echo "timestamp=$timestamp" >> $GITHUB_OUTPUT
+
+      - name: Commit generated contacts
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+
+          git add outputs/
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            echo "committed=false" >> $GITHUB_OUTPUT
+          else
+            git commit -m "Update BrandMeister contacts - ${{ steps.generate.outputs.timestamp }} [skip ci]"
+            echo "committed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Push changes
+        if: steps.generate.outputs.committed == 'true'
+        run: git push
+        shell: bash
+
+  release:
+    name: Create Pre-Release
+    runs-on: ubuntu-latest
+    needs: generate
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cleanup old pre-releases (keep last 4)
+        run: |
+          echo "Fetching existing pre-releases..."
+          OLD_RELEASES=$(gh release list --limit 100 --json tagName,createdAt -q \
+            '.[] | select(.tagName | startswith("bm-pre-")) | .tagName' 2>/dev/null | \
+            tail -n +5)
+
+          if [ -n "$OLD_RELEASES" ]; then
+            echo "Deleting releases beyond last 4:"
+            echo "$OLD_RELEASES"
+            echo "$OLD_RELEASES" | while read -r tag; do
+              gh release delete "$tag" --yes 2>/dev/null || true
+              git push --delete origin "$tag" 2>/dev/null || true
+            done
+          else
+            echo "No releases to clean up."
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+
+      - name: Get timestamp
+        id: timestamp
+        run: |
+          timestamp=$(date +%Y-%m-%d)
+          echo "timestamp=$timestamp" >> $GITHUB_OUTPUT
+
+      - name: Create pre-release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: "BrandMeister Pre-Release ${{ env.timestamp }}"
+          tag_name: "bm-pre-${{ env.timestamp }}"
+          draft: false
+          prerelease: true
+          files: outputs/brandmeister-*.csv
+          body: |
+            ## BrandMeister Filtered Contacts
+
+            Filter talkgroups: 31261, 31266, 3126, 313136
+
+            Auto-generated by GitHub Actions.
+          token: ${{ secrets.GITHUB_TOKEN }}
