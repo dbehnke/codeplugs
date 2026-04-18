@@ -40,16 +40,6 @@ async function withRetry<T>(fn: () => Promise<T>, maxRetries = 1, delayMs = 5000
   throw lastError;
 }
 
-async function waitForButtonEnabled(page, text: string, timeout: number) {
-  const button = page.locator('button', { hasText: text });
-  const deadline = Date.now() + timeout;
-  while (Date.now() < deadline) {
-    if (await button.isEnabled()) return true;
-    await page.waitForTimeout(500);
-  }
-  return false;
-}
-
 async function main() {
   const { talkgroups, outputPath } = parseArgs();
   console.log(`Fetching BrandMeister contacts for talkgroups: ${talkgroups}`);
@@ -59,6 +49,8 @@ async function main() {
     const browser = await chromium.launch({ headless: true });
     const context = await browser.newContext({
       userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      viewport: { width: 1920, height: 1080 },
+      deviceScaleFactor: 2,
     });
     const page = await context.newPage();
 
@@ -67,26 +59,48 @@ async function main() {
     console.log('Navigating to BrandMeister contact export page...');
     await page.goto('https://brandmeister.network/?page=contactsexport', { waitUntil: 'networkidle' });
 
+    console.log('Waiting for Angular to bootstrap...');
+    await page.waitForTimeout(3000);
+
     console.log('Waiting for talkgroups input field...');
     await page.waitForSelector('input[type="text"]', { timeout: 10000 });
 
     await page.locator('input[type="text"]').fill(talkgroups);
     console.log(`Filled talkgroups: ${talkgroups}`);
 
-    console.log('Clicking Run button...');
-    await page.locator('button', { hasText: 'Run' }).click();
+    console.log('Clicking Run button via JavaScript...');
+    await page.evaluate(() => {
+      const buttons = Array.from(document.querySelectorAll('button'));
+      const runBtn = buttons.find((b: any) => b.textContent?.trim() === 'Run');
+      if (runBtn) (runBtn as HTMLButtonElement).click();
+      else throw new Error('Run button not found');
+    });
 
-    console.log('Waiting for results to load...');
-    const ready = await waitForButtonEnabled(page, 'CSV', 90000);
-    if (!ready) {
-      console.error('Timed out waiting for results (CSV button did not enable).');
+    console.log('Waiting for data to load...');
+    await page.waitForTimeout(5000);
+
+    const csvButton = page.locator('button', { hasText: 'CSV' });
+    await csvButton.waitFor({ state: 'visible', timeout: 5000 });
+
+    const deadline = Date.now() + 90000;
+    let enabled = false;
+    while (Date.now() < deadline) {
+      if (await csvButton.isEnabled()) {
+        enabled = true;
+        break;
+      }
+      await page.waitForTimeout(500);
+    }
+
+    if (!enabled) {
+      console.error('Timed out waiting for CSV button to be enabled.');
       await browser.close();
       process.exit(1);
     }
     console.log('Results loaded.');
 
     console.log('Clicking CSV button...');
-    await page.locator('button', { hasText: 'CSV' }).click();
+    await csvButton.click();
 
     console.log('Waiting for download to complete...');
     const download = await downloadPromise;
