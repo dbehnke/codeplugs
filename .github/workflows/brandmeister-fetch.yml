@@ -10,9 +10,41 @@ on:
       - 'filters/filter-brandmeister.csv'
 
 jobs:
+  fetch:
+    name: Fetch BrandMeister Contacts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Playwright browsers
+        run: bunx playwright install chromium --with-deps
+
+      - name: Fetch BrandMeister contacts
+        id: fetch
+        run: |
+          bun run scripts/fetch-brandmeister.ts
+          echo "lines=$(wc -l < filters/filter-brandmeister.csv | tr -d ' ')" >> $GITHUB_OUTPUT
+
+      - name: Upload filter file
+        uses: actions/upload-artifact@v4
+        with:
+          name: filter-brandmeister
+          path: filters/filter-brandmeister.csv
+          retention-days: 1
+
   generate:
     name: Generate Filtered Contacts
     runs-on: ubuntu-latest
+    needs: fetch
     permissions:
       contents: write
     steps:
@@ -21,6 +53,12 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
+
+      - name: Download filter file
+        uses: actions/download-artifact@v4
+        with:
+          name: filter-brandmeister
+          path: filters/
 
       - name: Set up Go
         uses: actions/setup-go@v5
