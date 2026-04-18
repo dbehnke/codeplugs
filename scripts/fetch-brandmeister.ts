@@ -1,11 +1,10 @@
 import { chromium } from 'playwright';
-import { writeFileSync } from 'fs';
 import { resolve } from 'path';
 
 const TALKGROUPS_ARG = '--talkgroups';
 const DEFAULT_TALKGROUPS = '31261,31266,3126,313136';
 
-function parseArgs(): { talkgroups: string; outputPath: string } {
+function parseArgs() {
   const args = process.argv.slice(2);
   let talkgroups = DEFAULT_TALKGROUPS;
   let outputPath = 'filters/filter-brandmeister.csv';
@@ -41,6 +40,16 @@ async function withRetry<T>(fn: () => Promise<T>, maxRetries = 1, delayMs = 5000
   throw lastError;
 }
 
+async function waitForButtonEnabled(page, text: string, timeout: number) {
+  const button = page.locator('button', { hasText: text });
+  const deadline = Date.now() + timeout;
+  while (Date.now() < deadline) {
+    if (await button.isEnabled()) return true;
+    await page.waitForTimeout(500);
+  }
+  return false;
+}
+
 async function main() {
   const { talkgroups, outputPath } = parseArgs();
   console.log(`Fetching BrandMeister contacts for talkgroups: ${talkgroups}`);
@@ -53,44 +62,32 @@ async function main() {
     });
     const page = await context.newPage();
 
-    // Track downloads
-    const downloadPromise = page.waitForEvent('download', { timeout: 60000 });
+    const downloadPromise = page.waitForEvent('download', { timeout: 120000 });
 
-    // Navigate to BrandMeister contact export
     console.log('Navigating to BrandMeister contact export page...');
     await page.goto('https://brandmeister.network/?page=contactsexport', { waitUntil: 'networkidle' });
 
-    // Wait for the talkgroups input field to be present
     console.log('Waiting for talkgroups input field...');
     await page.waitForSelector('input[type="text"]', { timeout: 10000 });
 
-    // Fill in talkgroups
-    const inputSelector = 'input[type="text"]';
-    await page.locator(inputSelector).fill(talkgroups);
+    await page.locator('input[type="text"]').fill(talkgroups);
     console.log(`Filled talkgroups: ${talkgroups}`);
 
-    // Click the Run button
     console.log('Clicking Run button...');
-    const runButton = page.locator('button', { hasText: 'Run' });
-    await runButton.click();
+    await page.locator('button', { hasText: 'Run' }).click();
 
-    // Wait for the results to load (wait for CSV button to appear or network to settle)
-    console.log('Waiting for results...');
-    try {
-      await page.waitForSelector('button:has-text("CSV")', { timeout: 90000 });
-      console.log('Results loaded.');
-    } catch {
-      console.error('Timed out waiting for results.');
+    console.log('Waiting for results to load...');
+    const ready = await waitForButtonEnabled(page, 'CSV', 90000);
+    if (!ready) {
+      console.error('Timed out waiting for results (CSV button did not enable).');
       await browser.close();
       process.exit(1);
     }
+    console.log('Results loaded.');
 
-    // Click CSV download button
     console.log('Clicking CSV button...');
-    const csvButton = page.locator('button', { hasText: 'CSV' });
-    await csvButton.click();
+    await page.locator('button', { hasText: 'CSV' }).click();
 
-    // Wait for download
     console.log('Waiting for download to complete...');
     const download = await downloadPromise;
     const tempPath = await download.path();
@@ -98,11 +95,8 @@ async function main() {
       throw new Error('Download path is null');
     }
 
-    // Read downloaded content
-    const content = await download.suggestedFilename();
-    console.log(`Downloaded file: ${content}`);
+    console.log(`Downloaded file: ${download.suggestedFilename()}`);
 
-    // Read file content using Node.js fs
     const fs = await import('fs');
     const downloadedContent = fs.readFileSync(tempPath, 'utf-8');
     const absoluteOutputPath = resolve(outputPath);
