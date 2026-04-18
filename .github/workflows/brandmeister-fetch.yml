@@ -1,3 +1,4 @@
+# Fetches BrandMeister contacts, generates filtered exports, creates weekly pre-releases
 name: BrandMeister Fetch & Release
 
 env:
