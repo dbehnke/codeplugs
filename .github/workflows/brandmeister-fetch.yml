@@ -49,8 +49,6 @@ jobs:
     name: Generate Filtered Contacts
     runs-on: ubuntu-latest
     needs: fetch
-    permissions:
-      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -92,26 +90,16 @@ jobs:
           mkdir -p outputs
           task generate-brandmeister-clean
 
-          echo "files<<EOF" >> $GITHUB_OUTPUT
-          ls -1 outputs/brandmeister-*.csv >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
           first_file=$(ls -1 outputs/brandmeister-*.csv | head -1)
           timestamp=$(echo "$first_file" | grep -oE '[0-9]{8}_[0-9]{6}')
           echo "timestamp=$timestamp" >> $GITHUB_OUTPUT
 
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add -f outputs/
-
-          if git diff --cached --quiet; then
-            echo "No changes to commit"
-            echo "committed=false" >> $GITHUB_OUTPUT
-          else
-            git commit -m "Update BrandMeister contacts - $timestamp [skip ci]"
-            echo "committed=true" >> $GITHUB_OUTPUT
-            git push
-          fi
+      - name: Upload generated contacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: brandmeister-contacts
+          path: outputs/brandmeister-*.csv
+          retention-days: 1
 
   release:
     name: Create Pre-Release
@@ -120,16 +108,17 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Checkout repository
+      - name: Download generated contacts
+        uses: actions/download-artifact@v7
+        with:
+          name: brandmeister-contacts
+          path: outputs/
+
+      - name: Checkout for tag cleanup
         uses: actions/checkout@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
-
-      - name: Pull latest changes
-        run: |
-          git fetch origin main --force
-          git reset --hard origin/main
 
       - name: Cleanup old pre-releases (keep last 4)
         run: |
