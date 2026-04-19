@@ -109,6 +109,12 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Checkout for tag cleanup
+        uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
       - name: Clean outputs directory
         run: rm -rf outputs/ && mkdir -p outputs/
 
@@ -117,12 +123,6 @@ jobs:
         with:
           name: brandmeister-contacts-${{ github.run_id }}
           path: outputs/
-
-      - name: Checkout for tag cleanup
-        uses: actions/checkout@v6
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0
 
       - name: Cleanup old pre-releases (keep last 4)
         run: |
