@@ -109,6 +109,9 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Clean outputs directory
+        run: rm -rf outputs/ && mkdir -p outputs/
+
       - name: Download generated contacts
         uses: actions/download-artifact@v7
         with:
