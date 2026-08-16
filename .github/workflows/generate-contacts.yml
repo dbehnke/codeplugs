@@ -20,7 +20,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
     
@@ -30,7 +30,7 @@ jobs:
         go-version: '1.26.1'
 
     - name: Set up Bun
-      uses: oven-sh/setup-bun@v1
+      uses: oven-sh/setup-bun@v2
       with:
         bun-version: latest
 
@@ -41,7 +41,7 @@ jobs:
         bun run build
 
     - name: Cache RadioID.net contacts
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       id: cache-radioid
       with:
         path: user.csv
@@ -108,7 +108,7 @@ jobs:
     
     - name: Create Pull Request
       id: create-pr
-      uses: peter-evans/create-pull-request@v6
+      uses: peter-evans/create-pull-request@v8
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         commit-message: "Update filtered contact lists"
