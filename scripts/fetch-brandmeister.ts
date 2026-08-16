@@ -3,6 +3,8 @@ import { resolve } from 'path';
 
 const TALKGROUPS_ARG = '--talkgroups';
 const DEFAULT_TALKGROUPS = '31261,31266,3126,313136';
+const CONTACTS_EXPORT_URL = 'https://brandmeister.network/#/contactsexport';
+const QUERY_TIMEOUT_MS = 120000;
 
 function parseArgs() {
   const args = process.argv.slice(2);
@@ -47,80 +49,65 @@ async function main() {
 
   await withRetry(async () => {
     const browser = await chromium.launch({ headless: true });
-    const context = await browser.newContext({
-      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      viewport: { width: 1920, height: 1080 },
-      deviceScaleFactor: 2,
-    });
-    const page = await context.newPage();
+    try {
+      const context = await browser.newContext({
+        userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        viewport: { width: 1920, height: 1080 },
+        deviceScaleFactor: 2,
+      });
+      const page = await context.newPage();
 
-    const downloadPromise = page.waitForEvent('download', { timeout: 120000 });
+      console.log('Navigating to BrandMeister contact export page...');
+      await page.goto(CONTACTS_EXPORT_URL, { waitUntil: 'networkidle' });
 
-    console.log('Navigating to BrandMeister contact export page...');
-    await page.goto('https://brandmeister.network/?page=contactsexport', { waitUntil: 'networkidle' });
+      const talkgroupsInput = page.locator('#talkgroups');
+      const runButton = page.locator('#addTalkgroup');
 
-    console.log('Waiting for Angular to bootstrap...');
-    await page.waitForTimeout(3000);
+      console.log('Waiting for talkgroups input field...');
+      await talkgroupsInput.waitFor({ state: 'visible', timeout: 15000 });
 
-    console.log('Waiting for talkgroups input field...');
-    await page.waitForSelector('input[type="text"]', { timeout: 10000 });
+      await talkgroupsInput.fill(talkgroups);
+      console.log(`Filled talkgroups: ${talkgroups}`);
 
-    await page.locator('input[type="text"]').fill(talkgroups);
-    console.log(`Filled talkgroups: ${talkgroups}`);
+      console.log('Running contact query...');
+      await runButton.click();
 
-    console.log('Clicking Run button via JavaScript...');
-    await page.evaluate(() => {
-      const buttons = Array.from(document.querySelectorAll('button'));
-      const runBtn = buttons.find((b: any) => b.textContent?.trim() === 'Run');
-      if (runBtn) (runBtn as HTMLButtonElement).click();
-      else throw new Error('Run button not found');
-    });
+      // The results table and CSV button exist before the query starts. Wait for
+      // a real data cell to replace DataTables' `.dt-empty` placeholder before
+      // exporting, otherwise CSV can download an empty file.
+      await page.waitForSelector('#userTable tbody td:not(.dt-empty)', {
+        state: 'visible',
+        timeout: QUERY_TIMEOUT_MS,
+      });
+      console.log('Results loaded.');
 
-    console.log('Waiting for data to load...');
-    await page.waitForTimeout(5000);
+      const csvButton = page.getByRole('button', { name: 'CSV', exact: true });
+      await csvButton.waitFor({ state: 'visible', timeout: 5000 });
 
-    const csvButton = page.locator('button', { hasText: 'CSV' });
-    await csvButton.waitFor({ state: 'visible', timeout: 5000 });
+      console.log('Clicking CSV button...');
+      const downloadPromise = page.waitForEvent('download', { timeout: 30000 });
+      await csvButton.click();
 
-    const deadline = Date.now() + 90000;
-    let enabled = false;
-    while (Date.now() < deadline) {
-      if (await csvButton.isEnabled()) {
-        enabled = true;
-        break;
+      console.log('Waiting for download to complete...');
+      const download = await downloadPromise;
+      const tempPath = await download.path();
+      if (!tempPath) {
+        throw new Error('Download path is null');
       }
-      await page.waitForTimeout(500);
-    }
 
-    if (!enabled) {
-      console.error('Timed out waiting for CSV button to be enabled.');
+      console.log(`Downloaded file: ${download.suggestedFilename()}`);
+
+      const fs = await import('fs');
+      const downloadedContent = fs.readFileSync(tempPath, 'utf-8');
+      const absoluteOutputPath = resolve(outputPath);
+      fs.writeFileSync(absoluteOutputPath, downloadedContent, 'utf-8');
+
+      const lines = downloadedContent.split('\n').filter((l) => l.trim()).length;
+      console.log(`Saved ${lines} lines to ${absoluteOutputPath}`);
+      console.log('Done.');
+    } finally {
       await browser.close();
-      process.exit(1);
     }
-    console.log('Results loaded.');
-
-    console.log('Clicking CSV button...');
-    await csvButton.click();
-
-    console.log('Waiting for download to complete...');
-    const download = await downloadPromise;
-    const tempPath = await download.path();
-    if (!tempPath) {
-      throw new Error('Download path is null');
-    }
-
-    console.log(`Downloaded file: ${download.suggestedFilename()}`);
-
-    const fs = await import('fs');
-    const downloadedContent = fs.readFileSync(tempPath, 'utf-8');
-    const absoluteOutputPath = resolve(outputPath);
-    fs.writeFileSync(absoluteOutputPath, downloadedContent, 'utf-8');
-
-    const lines = downloadedContent.split('\n').filter((l) => l.trim()).length;
-    console.log(`Saved ${lines} lines to ${absoluteOutputPath}`);
-
-    await browser.close();
-    console.log('Done.');
   });
 }
 
